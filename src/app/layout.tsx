@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Inter } from "next/font/google";
 import ThemeProvider from "@/components/theme-provider";
 import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
 
+// @ts-expect-error : issue with them css files
 import "./globals.css";
 import { dark } from "@clerk/themes";
 
