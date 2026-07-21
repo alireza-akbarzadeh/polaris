@@ -6,6 +6,7 @@ import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from '@cl
 // @ts-expect-error : issue with them css files
 import "./globals.css";
 import { dark } from "@clerk/themes";
+import { ConvexClientProvider } from "@/components/convex-provider";
 
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -37,7 +38,8 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${ibmPlexMono.variable} antialiased`}
       >
-        <header className="flex justify-end items-center p-4 gap-4 h-16">
+        <ConvexClientProvider>
+         <header className="flex justify-end items-center p-4 gap-4 h-16">
             <Show when="signed-out">
               <SignInButton />
               <SignUpButton>
@@ -50,9 +52,10 @@ export default function RootLayout({
               <UserButton />
             </Show>
           </header>
-        <ThemeProvider defaultTheme="dark" attribute="class" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+          <ThemeProvider defaultTheme="dark" attribute="class" enableSystem disableTransitionOnChange>
+           {children}
+          </ThemeProvider>
+        </ConvexClientProvider>
       </body>
     </html>
     </ClerkProvider>
