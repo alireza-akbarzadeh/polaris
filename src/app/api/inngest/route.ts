@@ -1,5 +1,5 @@
-import { inngest } from "@/inngest/client";
-import { blocking } from "@/inngest/fucntions";
+import { inngest } from "@/integration/inngest/client";
+import { blocking } from "@/integration/inngest/functions";
 import { serve } from "inngest/next";
 
 export const { GET, POST, PUT } = serve({
