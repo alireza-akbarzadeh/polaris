@@ -95,9 +95,9 @@ export function ProjectList({ onViewAll, onOpenProject }: ProjectListProps) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex min-h-[220px] flex-1 flex-col items-center justify-center px-6 text-center">
+      <div className="flex min-h-55 flex-1 flex-col items-center justify-center px-6 text-center">
         <p className="text-[13px] font-medium text-foreground/80">No projects yet</p>
-        <p className="mt-1 max-w-[220px] text-[12px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 max-w-55 text-[12px] leading-relaxed text-muted-foreground">
           Create a workspace or pull one from GitHub to get started.
         </p>
       </div>
