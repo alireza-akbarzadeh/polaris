@@ -10,7 +10,7 @@ import {
 } from "convex/react";
 
 import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
-import { UnauthenticatedView } from "@/features/auth/components/unathenticated-view";
+import { UnauthenticatedView } from "@/features/auth/components/unauthenticated-view";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import ThemeProvider from "./theme-provider";
 
