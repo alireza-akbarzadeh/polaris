@@ -8,10 +8,11 @@ import {
   ConvexReactClient,
   Unauthenticated,
 } from "convex/react";
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
 
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import ThemeProvider from "./theme-provider";
+import { UnauthenticatedView } from "@/features/auth/components/unathenticated-view";
+import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -30,22 +31,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           <Authenticated>
-            <UserButton/>
+            <UserButton />
+            {children}
           </Authenticated>
           <Unauthenticated>
-            <SignInButton />
-            <SignUpButton>
-              <button className="bg-[#6c47ff] text-white rounded-full font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 cursor-pointer">
-                Sign Up
-              </button>
-            </SignUpButton>
+            <UnauthenticatedView />
           </Unauthenticated>
           <AuthLoading>
-            <div className="flex justify-center items-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 dark:border-white"></div>
-            </div>
+            <AuthLoadingView/>
           </AuthLoading>
-          {children}
         </ThemeProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
