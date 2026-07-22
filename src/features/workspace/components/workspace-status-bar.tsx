@@ -18,6 +18,7 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const changedFiles = useChangedFiles(projectId);
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
 
   const changeCount = changedFiles?.length ?? 0;
   const branch = project?.githubBranch ?? "main";
@@ -60,7 +61,15 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             )}
           </button>
         ) : (
-          <span className="px-1.5 text-[#6f737a]">No Git repository</span>
+          <button
+            type="button"
+            onClick={openGitInitDialog}
+            className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-[#9a9a9a] transition-colors hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            title="Initialize Git repository"
+          >
+            <GitBranchIcon className="size-3 shrink-0" />
+            <span>Initialize Repository</span>
+          </button>
         )}
       </div>
 

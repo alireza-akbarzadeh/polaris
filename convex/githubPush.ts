@@ -1,11 +1,10 @@
 "use node";
 
-import { Octokit } from "@octokit/rest";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
-import { getClerkGitHubToken } from "./lib/github";
+import { createOctokit, getClerkGitHubToken } from "./lib/github";
 
 function parseOwnerRepo(githubRepoUrl: string): { owner: string; repo: string } {
   const trimmed = githubRepoUrl.trim().replace(/^https?:\/\/github\.com\//i, "");
@@ -66,7 +65,7 @@ export const commitAndPush = action({
 
     const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
     const branch = project.githubBranch?.trim() || "main";
-    const octokit = new Octokit({ auth: token });
+    const octokit = createOctokit(token);
 
     await ctx.runMutation(internal.githubPushMutations.setExportStatus, {
       projectId: args.projectId,

@@ -2,16 +2,28 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useAction, useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "@/convex/_generated/api";
+import {
+  GITHUB_REPO_SCOPES,
+  hasGitHubRepoScope,
+} from "@/features/github/lib/github-scopes";
+
+function getGitHubExternalAccount(user: ReturnType<typeof useUser>["user"]) {
+  return user?.externalAccounts.find((account) => account.provider === "github");
+}
 
 export function useGitHubConnection() {
+  const { user } = useUser();
   const connection = useQuery(api.github.getConnection);
   const syncConnection = useAction(api.githubActions.syncConnection);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const hasSynced = useRef(false);
+
+  const githubAccount = getGitHubExternalAccount(user);
+  const hasRepoScope = hasGitHubRepoScope(githubAccount?.approvedScopes);
 
   const sync = useCallback(async () => {
     setIsSyncing(true);
@@ -39,6 +51,7 @@ export function useGitHubConnection() {
   return {
     connection,
     isConnected: Boolean(connection),
+    hasRepoScope,
     isLoading: connection === undefined || isSyncing,
     syncError,
     sync,
@@ -50,6 +63,12 @@ export function useConnectGitHub() {
   const syncConnection = useAction(api.githubActions.syncConnection);
   const [isConnecting, setIsConnecting] = useState(false);
 
+  const githubAccount = useMemo(
+    () => getGitHubExternalAccount(user),
+    [user],
+  );
+  const hasRepoScope = hasGitHubRepoScope(githubAccount?.approvedScopes);
+
   const connect = useCallback(async () => {
     if (!user) {
       return;
@@ -57,19 +76,41 @@ export function useConnectGitHub() {
 
     setIsConnecting(true);
     try {
-      await user.createExternalAccount({
-        strategy: "oauth_github",
-        redirectUrl: window.location.href,
-      });
+      const existing = getGitHubExternalAccount(user);
+
+      if (existing) {
+        const account = await existing.reauthorize({
+          additionalScopes: [...GITHUB_REPO_SCOPES],
+          redirectUrl: window.location.href,
+        });
+        const redirectUrl = account.verification?.externalVerificationRedirectURL;
+        if (redirectUrl) {
+          window.location.href = redirectUrl.href;
+          return;
+        }
+      } else {
+        const account = await user.createExternalAccount({
+          strategy: "oauth_github",
+          redirectUrl: window.location.href,
+          additionalScopes: [...GITHUB_REPO_SCOPES],
+        });
+        const redirectUrl = account.verification?.externalVerificationRedirectURL;
+        if (redirectUrl) {
+          window.location.href = redirectUrl.href;
+          return;
+        }
+      }
+
       await syncConnection({});
     } finally {
       setIsConnecting(false);
     }
-  }, [user, syncConnection]);
+  }, [syncConnection, user]);
 
   return {
     connect,
     isConnecting,
+    hasRepoScope,
     isReady: isLoaded && Boolean(user),
   };
 }

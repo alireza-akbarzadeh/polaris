@@ -1,12 +1,12 @@
 "use node";
 
-import { Octokit } from "@octokit/rest";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 import {
+  createOctokit,
   getClerkGitHubToken,
   MAX_FILE_BYTES,
   MAX_IMPORT_FILES,
@@ -21,7 +21,7 @@ async function fetchRepoFiles(
   repo: string,
   branch: string,
 ): Promise<{ files: GitHubImportFile[]; commitSha: string }> {
-  const octokit = new Octokit({ auth: token });
+  const octokit = createOctokit(token);
 
   const { data: refData } = await octokit.rest.git.getRef({
     owner,

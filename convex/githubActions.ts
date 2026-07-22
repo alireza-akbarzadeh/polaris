@@ -1,10 +1,8 @@
 "use node";
 
-import { Octokit } from "@octokit/rest";
-
 import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
-import { getClerkGitHubToken } from "./lib/github";
+import { createOctokit, getClerkGitHubToken } from "./lib/github";
 
 export const syncConnection = action({
   args: {},
@@ -22,7 +20,7 @@ export const syncConnection = action({
       return { connected: false as const };
     }
 
-    const octokit = new Octokit({ auth: token });
+    const octokit = createOctokit(token);
     const { data: githubUser } = await octokit.rest.users.getAuthenticated();
 
     await ctx.runMutation(internal.github.upsertConnection, {

@@ -15,9 +15,11 @@ import {
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
+import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
+import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
@@ -163,16 +165,7 @@ export function WorkspaceLayout({
               defaultSize={`${terminalDefault}`}
               className="bg-[#2b2d30]"
             >
-              <div className="flex h-full flex-col border-t border-[#1e1f22]">
-                <div className="flex h-7 items-center border-b border-[#1e1f22] px-3">
-                  <p className="text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
-                    Terminal
-                  </p>
-                </div>
-                <div className="flex-1 p-2 font-mono text-[12px] text-[#9a9a9a]">
-                  $ ready
-                </div>
-              </div>
+              <WorkspaceTerminal projectId={projectId} />
             </ResizablePanel>
           </ResizablePanelGroup>
         </ResizablePanel>
@@ -197,6 +190,7 @@ export function WorkspaceLayout({
 
       <WorkspaceSettingsDialog />
       <WorkspaceGoToFileDialog projectId={projectId} />
+      <InitializeGitRepositoryDialog projectId={projectId} />
       <WorkspaceStatusBar projectId={projectId} />
     </div>
   );

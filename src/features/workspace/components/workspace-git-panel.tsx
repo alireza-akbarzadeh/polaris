@@ -17,6 +17,7 @@ import { GitHubConnectionStatus } from "@/features/github/components/github-conn
 import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 type WorkspaceGitPanelProps = {
@@ -120,9 +121,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                 </Button>
               </>
             ) : (
-              <p className="text-[11px] text-[#787878]">
-                Link a GitHub repository to commit and push changes.
-              </p>
+              <InitializeRepositoryPrompt />
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
@@ -200,17 +199,40 @@ function GitInfoTab({
           </div>
         </div>
       ) : (
-        <div className="space-y-2 p-3">
-          <p className="text-[11px] text-[#9a9a9a]">
-            This project is not linked to a GitHub repository.
-          </p>
-          <p className="text-[11px] text-[#787878]">
-            Clone a repository from the home page to import a GitHub project.
-          </p>
-        </div>
+        <InitializeRepositoryPrompt variant="info" />
       )}
     </div>
   );
+}
+
+function InitializeRepositoryPrompt({
+  variant = "changes",
+}: {
+  variant?: "changes" | "info";
+}) {
+  const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
+
+  const content = (
+    <div className="space-y-2">
+      <p className="text-[11px] text-[#9a9a9a]">
+        Create a GitHub repository for this project to track and push changes.
+      </p>
+      <Button
+        type="button"
+        size="sm"
+        onClick={openGitInitDialog}
+        className="h-7 w-full bg-[#3574f0] text-[11px] text-white hover:bg-[#2d5fd4]"
+      >
+        Initialize Repository
+      </Button>
+    </div>
+  );
+
+  if (variant === "info") {
+    return <div className="space-y-2 p-3">{content}</div>;
+  }
+
+  return content;
 }
 
 function GitInfoRow({

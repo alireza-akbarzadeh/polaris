@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 
 export function useCommitAndPush(projectId: string) {
   const commitAndPush = useAction(api.githubPush.commitAndPush);
@@ -24,9 +25,11 @@ export function useCommitAndPush(projectId: string) {
         );
         return result;
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to push to GitHub",
-        );
+        const message = parseConvexErrorMessage(error, "Failed to push to GitHub");
+        toast.error("Could not push to GitHub", {
+          description: message,
+          duration: 8000,
+        });
         throw error;
       } finally {
         setIsPushing(false);

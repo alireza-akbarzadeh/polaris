@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
+import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
@@ -155,6 +156,8 @@ export function WorkspaceToolbar({
             orientation="vertical"
             className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-[#4e5155]"
           />
+
+          <WorkspacePublishMenu projectId={projectId} />
 
           <ToolbarTooltipButton
             label="Settings"
