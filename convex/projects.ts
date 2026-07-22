@@ -19,6 +19,55 @@ export const createProject = mutation({
   },
 });
 
+export const updateProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const name = args.name.trim();
+    if (!name) {
+      throw new Error("Project name is required");
+    }
+
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.ownerId !== identity.subject) {
+      throw new Error("Unauthorized access to this project");
+    }
+
+    await ctx.db.patch(args.projectId, {
+      name,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+
+export const getProjectById = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+
+    const project = await ctx.db
+      .get("projects", args.projectId);
+
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.ownerId !== identity.subject) {
+      throw new Error("Unauthorized access to this project");
+    }
+    return project;
+  },
+});
+
 export const getPartial = query({
   args: {
     limit: v.number(),

@@ -1,0 +1,267 @@
+"use client";
+
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import {
+  usePanelRef,
+  type Layout,
+  type PanelImperativeHandle,
+} from "react-resizable-panels";
+
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
+import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
+import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
+import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
+import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
+import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
+import {
+  useWorkspaceStore,
+  type PanelSizes,
+} from "@/features/workspace/store/workspace-store";
+
+type WorkspaceLayoutProps = {
+  projectId: string;
+  projectName?: string;
+  children: ReactNode;
+};
+
+export function WorkspaceLayout({
+  projectId,
+  projectName,
+  children,
+}: WorkspaceLayoutProps) {
+  useWorkspaceShortcuts();
+  useWorkspacePrefsSync();
+
+  const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
+  const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
+  const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
+  const panelSizes = useWorkspaceStore((s) => s.panelSizes);
+  const setPanelSizes = useWorkspaceStore((s) => s.setPanelSizes);
+
+  const sidebarPanelRef = usePanelRef();
+  const terminalPanelRef = usePanelRef();
+  const aiPanelRef = usePanelRef();
+  const isApplyingLayoutRef = useRef(false);
+
+  useCollapsiblePanelSync({
+    open: sidebarOpen,
+    panelRef: sidebarPanelRef,
+    sizeKey: "sidebar",
+    isApplyingLayoutRef,
+  });
+  useCollapsiblePanelSync({
+    open: terminalOpen,
+    panelRef: terminalPanelRef,
+    sizeKey: "terminal",
+    isApplyingLayoutRef,
+  });
+  useCollapsiblePanelSync({
+    open: aiPanelOpen,
+    panelRef: aiPanelRef,
+    sizeKey: "ai",
+    isApplyingLayoutRef,
+  });
+
+  const onHorizontalLayoutChanged = (layout: Layout) => {
+    if (isApplyingLayoutRef.current) return;
+
+    const state = useWorkspaceStore.getState();
+    const next: Partial<PanelSizes> = {};
+
+    if (
+      state.sidebarOpen &&
+      typeof layout.sidebar === "number" &&
+      layout.sidebar > 0
+    ) {
+      next.sidebar = layout.sidebar;
+    }
+    if (state.aiPanelOpen && typeof layout.ai === "number" && layout.ai > 0) {
+      next.ai = layout.ai;
+    }
+    if (Object.keys(next).length > 0) setPanelSizes(next);
+  };
+
+  const onVerticalLayoutChanged = (layout: Layout) => {
+    if (isApplyingLayoutRef.current) return;
+
+    const state = useWorkspaceStore.getState();
+    const terminal = layout.terminal;
+    if (
+      state.terminalOpen &&
+      typeof terminal === "number" &&
+      terminal > 0
+    ) {
+      setPanelSizes({ terminal });
+    }
+  };
+
+  const sidebarDefault = sidebarOpen ? panelSizes.sidebar : 0;
+  const aiDefault = aiPanelOpen ? panelSizes.ai : 0;
+  const terminalDefault = terminalOpen ? panelSizes.terminal : 0;
+  const editorDefault = Math.max(30, 100 - sidebarDefault - aiDefault);
+
+  return (
+    <div className="flex h-dvh w-full flex-col bg-[#1e1f22] text-[#bcbec4]">
+      <WorkspaceToolbar projectId={projectId} projectName={projectName} />
+
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="min-h-0 flex-1"
+        defaultLayout={{
+          sidebar: sidebarDefault,
+          editor: editorDefault,
+          ai: aiDefault,
+        }}
+        onLayoutChanged={onHorizontalLayoutChanged}
+      >
+        <ResizablePanel
+          id="sidebar"
+          panelRef={sidebarPanelRef}
+          collapsible
+          collapsedSize={0}
+          minSize="12%"
+          defaultSize={`${sidebarDefault}`}
+          className="bg-[#2b2d30]"
+        >
+          <aside className="flex h-full flex-col border-r border-[#1e1f22]">
+            <div className="flex h-7 items-center border-b border-[#1e1f22] px-3">
+              <p className="text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
+                Project
+              </p>
+            </div>
+            <div className="flex-1 p-2 text-[12px] text-[#9a9a9a]">
+              File tree goes here
+            </div>
+          </aside>
+        </ResizablePanel>
+
+        <ResizableHandle className="w-px bg-[#1e1f22] after:hidden hover:bg-[#3574f0]" />
+
+        <ResizablePanel id="editor" minSize="30%" className="min-w-0">
+          <ResizablePanelGroup
+            orientation="vertical"
+            className="h-full"
+            defaultLayout={{
+              main: 100 - terminalDefault,
+              terminal: terminalDefault,
+            }}
+            onLayoutChanged={onVerticalLayoutChanged}
+          >
+            <ResizablePanel id="main" minSize="20%" className="min-h-0 bg-[#1e1f22]">
+              <WorkspaceEditorPanel>{children}</WorkspaceEditorPanel>
+            </ResizablePanel>
+
+            <ResizableHandle className="h-px bg-[#1e1f22] after:hidden hover:bg-[#3574f0]" />
+
+            <ResizablePanel
+              id="terminal"
+              panelRef={terminalPanelRef}
+              collapsible
+              collapsedSize={0}
+              minSize="15%"
+              defaultSize={`${terminalDefault}`}
+              className="bg-[#2b2d30]"
+            >
+              <div className="flex h-full flex-col border-t border-[#1e1f22]">
+                <div className="flex h-7 items-center border-b border-[#1e1f22] px-3">
+                  <p className="text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
+                    Terminal
+                  </p>
+                </div>
+                <div className="flex-1 p-2 font-mono text-[12px] text-[#9a9a9a]">
+                  $ ready
+                </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
+
+        <ResizableHandle className="w-px bg-[#1e1f22] after:hidden hover:bg-[#3574f0]" />
+
+        <ResizablePanel
+          id="ai"
+          panelRef={aiPanelRef}
+          collapsible
+          collapsedSize={0}
+          minSize="18%"
+          defaultSize={`${aiDefault}`}
+          className="bg-[#2b2d30]"
+        >
+          <WorkspaceAiSidebar
+            projectId={projectId}
+            projectName={projectName}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      <WorkspaceSettingsDialog />
+    </div>
+  );
+}
+
+type CollapsiblePanelSyncOptions = {
+  open: boolean;
+  panelRef: RefObject<PanelImperativeHandle | null>;
+  sizeKey: keyof PanelSizes;
+  isApplyingLayoutRef: RefObject<boolean>;
+};
+
+function useCollapsiblePanelSync({
+  open,
+  panelRef,
+  sizeKey,
+  isApplyingLayoutRef,
+}: CollapsiblePanelSyncOptions) {
+  useLayoutEffect(() => {
+    let cancelled = false;
+    let frameId = 0;
+
+    const finishApplying = () => {
+      frameId = requestAnimationFrame(() => {
+        if (!cancelled) isApplyingLayoutRef.current = false;
+      });
+    };
+
+    const apply = () => {
+      if (cancelled) return;
+
+      const panel = panelRef.current;
+      if (!panel) {
+        frameId = requestAnimationFrame(apply);
+        return;
+      }
+
+      isApplyingLayoutRef.current = true;
+      const { panelSizes, setPanelSizes } = useWorkspaceStore.getState();
+
+      try {
+        if (open) {
+          if (panel.isCollapsed()) {
+            panel.expand();
+          }
+          panel.resize(`${panelSizes[sizeKey]}`);
+        } else if (!panel.isCollapsed()) {
+          const { asPercentage } = panel.getSize();
+          if (asPercentage > 0) {
+            setPanelSizes({ [sizeKey]: asPercentage });
+          }
+          panel.collapse();
+        }
+      } finally {
+        finishApplying();
+      }
+    };
+
+    apply();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [open, panelRef, sizeKey, isApplyingLayoutRef]);
+}
