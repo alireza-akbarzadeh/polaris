@@ -20,6 +20,12 @@ export type WorkspacePrefs = {
   panelSizes: PanelSizes;
 };
 
+export type TreeClipboard = {
+  mode: "cut" | "copy";
+  projectId: string;
+  path: string;
+};
+
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   goToFileOpen: boolean;
@@ -28,6 +34,10 @@ type WorkspaceState = WorkspacePrefs & {
   currentFilePath: string | null;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
+  treeClipboard: TreeClipboard | null;
+  pendingChatAttachPaths: string[] | null;
+  requestNewChat: boolean;
+  terminalCwdRequest: string | null;
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
@@ -43,6 +53,13 @@ type WorkspaceState = WorkspacePrefs & {
   setCurrentFilePath: (path: string | null) => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
+  setTreeClipboard: (clipboard: TreeClipboard | null) => void;
+  clearTreeClipboard: () => void;
+  setPendingChatAttachPaths: (paths: string[] | null) => void;
+  requestNewAiChat: () => void;
+  clearRequestNewChat: () => void;
+  requestTerminalCwd: (cwd: string) => void;
+  clearTerminalCwdRequest: () => void;
   hydrate: (prefs: Partial<WorkspacePrefs>) => void;
   getPersistablePrefs: () => WorkspacePrefs;
 };
@@ -79,6 +96,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     { label: "app" },
     { label: "page.tsx" },
   ],
+  treeClipboard: null,
+  pendingChatAttachPaths: null,
+  requestNewChat: false,
+  terminalCwdRequest: null,
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
@@ -98,6 +119,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       panelSizes: { ...s.panelSizes, ...sizes },
     })),
   setBreadcrumb: (segments) => set({ breadcrumb: segments }),
+  setTreeClipboard: (clipboard) => set({ treeClipboard: clipboard }),
+  clearTreeClipboard: () => set({ treeClipboard: null }),
+  setPendingChatAttachPaths: (paths) =>
+    set({ pendingChatAttachPaths: paths }),
+  requestNewAiChat: () => set({ requestNewChat: true }),
+  clearRequestNewChat: () => set({ requestNewChat: false }),
+  requestTerminalCwd: (cwd) =>
+    set({ terminalCwdRequest: cwd, terminalOpen: true }),
+  clearTerminalCwdRequest: () => set({ terminalCwdRequest: null }),
   hydrate: (prefs) =>
     set((s) => ({
       sidebarOpen: prefs.sidebarOpen ?? s.sidebarOpen,

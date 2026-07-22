@@ -3,8 +3,14 @@
 import {
   FolderTreeIcon,
   GitBranchIcon,
+  MoonIcon,
   SearchIcon,
+  SettingsIcon,
+  SquareTerminalIcon,
+  SunIcon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +31,15 @@ type ActivityItem = {
   label: string;
   icon: React.ReactNode;
   shortcut: string;
+};
+
+type UtilityItem = {
+  id: string;
+  label: string;
+  shortcut?: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
 };
 
 const ACTIVITY_ITEMS: ActivityItem[] = [
@@ -48,10 +63,68 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
   },
 ];
 
+const buttonClassName =
+  "relative size-7 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]";
+
+const activeClassName =
+  "bg-[#3c3f41] text-[#dfdfdf] before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[#3574f0]";
+
+function ActivityBarButton({
+  label,
+  shortcut,
+  icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  shortcut?: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          aria-pressed={active}
+          onClick={onClick}
+          className={cn(buttonClassName, active && activeClassName)}
+        >
+          {icon}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="right"
+        sideOffset={6}
+        className="flex items-center gap-2 border border-[#5a5d63] bg-[#3c3f41] px-2 py-1 text-[#dfdfdf] [&_svg]:hidden"
+      >
+        <span className="text-xs">{label}</span>
+        {shortcut ? (
+          <span className="text-[10px] text-[#9a9a9a]">{shortcut}</span>
+        ) : null}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function WorkspaceActivityBar() {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
+  const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
+  const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
 
   const onSelect = (view: LeftPanelView) => {
     if (leftPanelView === view && sidebarOpen) {
@@ -61,44 +134,69 @@ export function WorkspaceActivityBar() {
     }
   };
 
+  const utilityItems: UtilityItem[] = [
+    {
+      id: "terminal",
+      label: "Terminal",
+      shortcut: "⌘J",
+      icon: <SquareTerminalIcon className="size-4" strokeWidth={1.75} />,
+      active: terminalOpen,
+      onClick: () => runCommand("toggleTerminal"),
+    },
+    {
+      id: "theme",
+      label: isDark ? "Switch to Light Theme" : "Switch to Dark Theme",
+      icon: isDark ? (
+        <SunIcon className="size-4" strokeWidth={1.75} />
+      ) : (
+        <MoonIcon className="size-4" strokeWidth={1.75} />
+      ),
+      onClick: () => setTheme(isDark ? "light" : "dark"),
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      shortcut: "⌘,",
+      icon: <SettingsIcon className="size-4" strokeWidth={1.75} />,
+      active: settingsOpen,
+      onClick: () => runCommand("openSettings"),
+    },
+  ];
+
   return (
     <TooltipProvider delayDuration={300}>
       <nav
         aria-label="Tool windows"
-        className="flex w-9 shrink-0 flex-col items-center gap-0.5 border-r border-[#1e1f22] bg-[#2b2d30] py-1.5"
+        className="flex h-full w-9 shrink-0 flex-col items-center justify-between border-r border-[#1e1f22] bg-[#2b2d30] py-1.5"
       >
-        {ACTIVITY_ITEMS.map((item) => {
-          const active = sidebarOpen && leftPanelView === item.view;
-          return (
-            <Tooltip key={item.view}>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={item.label}
-                  aria-pressed={active}
-                  onClick={() => onSelect(item.view)}
-                  className={cn(
-                    "relative size-7 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
-                    active &&
-                      "bg-[#3c3f41] text-[#dfdfdf] before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[#3574f0]",
-                  )}
-                >
-                  {item.icon}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={6}
-                className="flex items-center gap-2 border border-[#5a5d63] bg-[#3c3f41] px-2 py-1 text-[#dfdfdf] [&_svg]:hidden"
-              >
-                <span className="text-xs">{item.label}</span>
-                <span className="text-[10px] text-[#9a9a9a]">{item.shortcut}</span>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
+        <div className="flex flex-col items-center gap-0.5">
+          {ACTIVITY_ITEMS.map((item) => {
+            const active = sidebarOpen && leftPanelView === item.view;
+            return (
+              <ActivityBarButton
+                key={item.view}
+                label={item.label}
+                shortcut={item.shortcut}
+                icon={item.icon}
+                active={active}
+                onClick={() => onSelect(item.view)}
+              />
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col items-center gap-0.5">
+          {utilityItems.map((item) => (
+            <ActivityBarButton
+              key={item.id}
+              label={item.label}
+              shortcut={item.shortcut}
+              icon={item.icon}
+              active={item.active}
+              onClick={item.onClick}
+            />
+          ))}
+        </div>
       </nav>
     </TooltipProvider>
   );

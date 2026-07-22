@@ -398,6 +398,17 @@ export function WorkspaceAiSidebar({
     setPanelView("chat");
   }, []);
 
+  const requestNewChat = useWorkspaceStore((s) => s.requestNewChat);
+  const clearRequestNewChat = useWorkspaceStore((s) => s.clearRequestNewChat);
+
+  useEffect(() => {
+    if (!requestNewChat) {
+      return;
+    }
+    handleNewAgent();
+    clearRequestNewChat();
+  }, [clearRequestNewChat, handleNewAgent, requestNewChat]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key.toLowerCase() === "n") {

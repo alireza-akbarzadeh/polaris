@@ -5,11 +5,15 @@ import {
   buildPath,
   deleteFolderRecursive,
   isProjectFileChanged,
+  listSiblingNames,
   seedDefaultProjectFiles,
+  suggestUniqueName,
   touchProject,
   updateDescendantPaths,
   verifyProjectAccess,
 } from "./lib/projectFiles";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 
 export const listByProject = query({
   args: {
@@ -350,6 +354,202 @@ export const remove = mutation({
     await touchProject(ctx, args.projectId);
   },
 });
+
+export const move = mutation({
+  args: {
+    projectId: v.id("projects"),
+    path: v.string(),
+    newParentId: v.optional(v.id("projectFiles")),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+
+    const item = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project_path", (q) =>
+        q.eq("projectId", args.projectId).eq("path", args.path),
+      )
+      .unique();
+
+    if (!item) {
+      throw new Error("File or folder not found");
+    }
+
+    let parentPath: string | undefined;
+    if (args.newParentId !== undefined) {
+      const parent = await ctx.db.get("projectFiles", args.newParentId);
+      if (!parent || parent.projectId !== args.projectId) {
+        throw new Error("Destination folder not found");
+      }
+      if (parent.kind !== "folder") {
+        throw new Error("Destination must be a folder");
+      }
+      if (parent._id === item._id) {
+        throw new Error("Cannot move a folder into itself");
+      }
+      if (
+        item.kind === "folder" &&
+        (parent.path === item.path ||
+          parent.path.startsWith(`${item.path}/`))
+      ) {
+        throw new Error("Cannot move a folder into itself or a descendant");
+      }
+      parentPath = parent.path;
+    }
+
+    const sameParent =
+      (item.parentId ?? undefined) === (args.newParentId ?? undefined);
+    if (sameParent) {
+      return item.path;
+    }
+
+    const siblingNames = await listSiblingNames(
+      ctx,
+      args.projectId,
+      args.newParentId,
+      item._id,
+    );
+    const name = suggestUniqueName(siblingNames, item.name);
+    const newPath = buildPath(parentPath, name);
+
+    if (item.kind === "folder") {
+      await updateDescendantPaths(ctx, args.projectId, item.path, newPath);
+    }
+
+    await ctx.db.patch(item._id, {
+      ...(args.newParentId === undefined
+        ? { parentId: undefined }
+        : { parentId: args.newParentId }),
+      name,
+      path: newPath,
+      updatedAt: Date.now(),
+    });
+
+    await touchProject(ctx, args.projectId);
+    return newPath;
+  },
+});
+
+export const duplicate = mutation({
+  args: {
+    projectId: v.id("projects"),
+    path: v.string(),
+    // undefined = same parent as source; null = project root; id = folder
+    targetParentId: v.optional(
+      v.union(v.id("projectFiles"), v.null()),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+
+    const item = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project_path", (q) =>
+        q.eq("projectId", args.projectId).eq("path", args.path),
+      )
+      .unique();
+
+    if (!item) {
+      throw new Error("File or folder not found");
+    }
+
+    const targetParentId =
+      args.targetParentId === undefined
+        ? item.parentId
+        : args.targetParentId === null
+          ? undefined
+          : args.targetParentId;
+
+    let parentPath: string | undefined;
+    if (targetParentId !== undefined) {
+      const parent = await ctx.db.get("projectFiles", targetParentId);
+      if (!parent || parent.projectId !== args.projectId) {
+        throw new Error("Destination folder not found");
+      }
+      if (parent.kind !== "folder") {
+        throw new Error("Destination must be a folder");
+      }
+      if (
+        item.kind === "folder" &&
+        (parent.path === item.path ||
+          parent.path.startsWith(`${item.path}/`))
+      ) {
+        throw new Error("Cannot duplicate a folder into itself or a descendant");
+      }
+      parentPath = parent.path;
+    }
+
+    const siblingNames = await listSiblingNames(
+      ctx,
+      args.projectId,
+      targetParentId,
+    );
+    const name = suggestUniqueName(siblingNames, item.name);
+    const newPath = buildPath(parentPath, name);
+
+    const newId = await duplicateNodeRecursive(
+      ctx,
+      args.projectId,
+      item._id,
+      targetParentId,
+      newPath,
+      name,
+    );
+
+    await touchProject(ctx, args.projectId);
+    return { id: newId, path: newPath };
+  },
+});
+
+async function duplicateNodeRecursive(
+  ctx: MutationCtx,
+  projectId: Id<"projects">,
+  sourceId: Id<"projectFiles">,
+  parentId: Id<"projectFiles"> | undefined,
+  path: string,
+  name: string,
+): Promise<Id<"projectFiles">> {
+  const source = await ctx.db.get("projectFiles", sourceId);
+  if (!source || source.projectId !== projectId) {
+    throw new Error("File or folder not found");
+  }
+
+  const now = Date.now();
+  const newId = await ctx.db.insert("projectFiles", {
+    projectId,
+    name,
+    parentId,
+    kind: source.kind,
+    content: source.kind === "file" ? (source.content ?? "") : undefined,
+    syncedContent: undefined,
+    staged: source.kind === "file" ? false : undefined,
+    path,
+    updatedAt: now,
+  });
+
+  if (source.kind === "folder") {
+    const children = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project_parent", (q) =>
+        q.eq("projectId", projectId).eq("parentId", sourceId),
+      )
+      .collect();
+
+    for (const child of children) {
+      const childPath = buildPath(path, child.name);
+      await duplicateNodeRecursive(
+        ctx,
+        projectId,
+        child._id,
+        newId,
+        childPath,
+        child.name,
+      );
+    }
+  }
+
+  return newId;
+}
 
 export const seedDefaults = mutation({
   args: {

@@ -37,6 +37,14 @@ export function useRenameProjectFile() {
   return useMutation(api.projectFiles.rename);
 }
 
+export function useMoveProjectFile() {
+  return useMutation(api.projectFiles.move);
+}
+
+export function useDuplicateProjectFile() {
+  return useMutation(api.projectFiles.duplicate);
+}
+
 export function useDeleteProjectFile() {
   return useMutation(api.projectFiles.remove);
 }

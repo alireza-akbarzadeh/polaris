@@ -14,9 +14,6 @@ import {
   FolderPlusIcon,
   ListCollapseIcon,
   MoreHorizontalIcon,
-  PencilIcon,
-  RefreshCwIcon,
-  Trash2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -37,6 +34,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
@@ -44,13 +42,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   useCreateProjectFile,
   useDeleteProjectFile,
+  useDuplicateProjectFile,
+  useMoveProjectFile,
   useProjectFiles,
   useRenameProjectFile,
   useSeedProjectFiles,
@@ -63,6 +64,7 @@ import {
   siblingNames,
   suggestUniqueName,
 } from "@/features/workspace/lib/unique-name";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 type PendingCreate = {
@@ -79,6 +81,8 @@ type VisibleTreeItem = {
   depth: number;
   parentId?: Id<"projectFiles">;
 };
+
+const CHAT_ATTACH_FILE_CAP = 20;
 
 function collectFolderIds(nodes: FileTreeNode[]): Id<"projectFiles">[] {
   const ids: Id<"projectFiles">[] = [];
@@ -135,10 +139,39 @@ function findNodeByPath(
   return undefined;
 }
 
+function collectAttachPaths(
+  files: Doc<"projectFiles">[],
+  path: string,
+  kind: "file" | "folder",
+): string[] {
+  if (kind === "file") {
+    return [path];
+  }
+
+  return files
+    .filter(
+      (file) =>
+        file.kind === "file" &&
+        (file.path === path || file.path.startsWith(`${path}/`)),
+    )
+    .map((file) => file.path)
+    .slice(0, CHAT_ATTACH_FILE_CAP);
+}
+
+function toTerminalCwd(folderPath: string) {
+  return folderPath ? `/${folderPath}` : "/";
+}
+
+function isModKey(event: KeyboardEvent | React.KeyboardEvent) {
+  return event.ctrlKey || event.metaKey;
+}
+
 export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   const files = useProjectFiles(projectId);
   const seedDefaults = useSeedProjectFiles();
   const createFile = useCreateProjectFile();
+  const moveFile = useMoveProjectFile();
+  const duplicateFile = useDuplicateProjectFile();
   const router = useRouter();
   const pathname = usePathname();
   const [collapseKey, setCollapseKey] = useState(0);
@@ -147,10 +180,29 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   );
   const [focusedId, setFocusedId] = useState<Id<"projectFiles"> | null>(null);
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
+  const [pendingRenameId, setPendingRenameId] =
+    useState<Id<"projectFiles"> | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] =
+    useState<Id<"projectFiles"> | null>(null);
+
+  const treeClipboard = useWorkspaceStore((s) => s.treeClipboard);
+  const setTreeClipboard = useWorkspaceStore((s) => s.setTreeClipboard);
+  const clearTreeClipboard = useWorkspaceStore((s) => s.clearTreeClipboard);
+  const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const setPendingChatAttachPaths = useWorkspaceStore(
+    (s) => s.setPendingChatAttachPaths,
+  );
+  const requestNewAiChat = useWorkspaceStore((s) => s.requestNewAiChat);
+  const requestTerminalCwd = useWorkspaceStore((s) => s.requestTerminalCwd);
+  const setAiPanelOpen = useWorkspaceStore((s) => s.toggleAiPanel);
 
   const tree = useMemo(
     () => (files ? buildFileTree(files) : undefined),
     [files],
+  );
+
+  const canPaste = Boolean(
+    treeClipboard && treeClipboard.projectId === projectId,
   );
 
   useEffect(() => {
@@ -210,101 +262,17 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     setOpenFolderIds(new Set());
   }, []);
 
-  const refreshTree = useCallback(() => {
-    setCollapseKey((key) => key + 1);
-    setOpenFolderIds(new Set());
-    toast.success("File explorer refreshed");
-  }, []);
-
-  const handleTreeKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLElement>) => {
-      if (!tree || renamingInputFocused()) {
-        return;
-      }
-
-      const visibleItems = flattenVisibleTree(tree, openFolderIds);
-      if (visibleItems.length === 0) {
-        return;
-      }
-
-      const currentIndex = focusedId
-        ? visibleItems.findIndex((item) => item.node.id === focusedId)
-        : -1;
-
-      switch (event.key) {
-        case "ArrowDown": {
-          event.preventDefault();
-          const nextIndex =
-            currentIndex < visibleItems.length - 1 ? currentIndex + 1 : 0;
-          setFocusedId(visibleItems[nextIndex].node.id);
-          break;
-        }
-        case "ArrowUp": {
-          event.preventDefault();
-          const nextIndex =
-            currentIndex > 0
-              ? currentIndex - 1
-              : visibleItems.length - 1;
-          setFocusedId(visibleItems[nextIndex].node.id);
-          break;
-        }
-        case "ArrowRight": {
-          if (currentIndex < 0) {
-            return;
-          }
-
-          const current = visibleItems[currentIndex];
-          if (current.node.kind !== "folder") {
-            return;
-          }
-
-          event.preventDefault();
-          if (!openFolderIds.has(current.node.id)) {
-            toggleFolder(current.node.id);
-            return;
-          }
-
-          const next = visibleItems[currentIndex + 1];
-          if (next?.parentId === current.node.id) {
-            setFocusedId(next.node.id);
-          }
-          break;
-        }
-        case "ArrowLeft": {
-          if (currentIndex < 0) {
-            return;
-          }
-
-          const current = visibleItems[currentIndex];
-          event.preventDefault();
-
-          if (
-            current.node.kind === "folder" &&
-            openFolderIds.has(current.node.id)
-          ) {
-            toggleFolder(current.node.id);
-            return;
-          }
-
-          if (current.parentId) {
-            setFocusedId(current.parentId);
-          }
-          break;
-        }
-      }
-    },
-    [focusedId, openFolderIds, toggleFolder, tree],
-  );
-
-  useEffect(() => {
-    if (files !== undefined && files.length === 0) {
-      void seedDefaults({ projectId: projectId as Id<"projects"> });
-    }
-  }, [files, projectId, seedDefaults]);
-
   const startCreate = useCallback(
     (kind: "file" | "folder", parentId?: Id<"projectFiles">) => {
       setPendingCreate({ kind, parentId });
+      if (parentId) {
+        setOpenFolderIds((current) => {
+          if (current.has(parentId)) return current;
+          const next = new Set(current);
+          next.add(parentId);
+          return next;
+        });
+      }
     },
     [],
   );
@@ -352,7 +320,299 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     [cancelCreate, createFile, files, pendingCreate, projectId, router],
   );
 
-  const renderPendingCreate = (parentId: Id<"projectFiles"> | undefined, depth: number) => {
+  const copyPathToClipboard = useCallback(async (path: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(path);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Failed to copy ${label.toLowerCase()}`);
+    }
+  }, []);
+
+  const cutItem = useCallback(
+    (path: string) => {
+      setTreeClipboard({ mode: "cut", projectId, path });
+      toast.message("Ready to move");
+    },
+    [projectId, setTreeClipboard],
+  );
+
+  const copyItem = useCallback(
+    (path: string) => {
+      setTreeClipboard({ mode: "copy", projectId, path });
+      toast.message("Ready to paste");
+    },
+    [projectId, setTreeClipboard],
+  );
+
+  const pasteInto = useCallback(
+    async (targetParentId?: Id<"projectFiles">) => {
+      if (!treeClipboard || treeClipboard.projectId !== projectId) {
+        return;
+      }
+
+      try {
+        if (treeClipboard.mode === "cut") {
+          const newPath = await moveFile({
+            projectId: projectId as Id<"projects">,
+            path: treeClipboard.path,
+            newParentId: targetParentId,
+          });
+          clearTreeClipboard();
+
+          const activePath = pathname.match(/\/files\/(.+)$/)?.[1];
+          if (
+            activePath &&
+            (decodeURIComponent(activePath) === treeClipboard.path ||
+              decodeURIComponent(activePath).startsWith(
+                `${treeClipboard.path}/`,
+              ))
+          ) {
+            const suffix = decodeURIComponent(activePath).slice(
+              treeClipboard.path.length,
+            );
+            router.push(`/projects/${projectId}/files/${newPath}${suffix}`);
+          }
+
+          toast.success("Moved");
+        } else {
+          const sourceKind = files?.find(
+            (file) => file.path === treeClipboard.path,
+          )?.kind;
+          const result = await duplicateFile({
+            projectId: projectId as Id<"projects">,
+            path: treeClipboard.path,
+            targetParentId: targetParentId ?? null,
+          });
+          toast.success("Pasted");
+          if (sourceKind === "file") {
+            router.push(`/projects/${projectId}/files/${result.path}`);
+          }
+        }
+
+        if (targetParentId) {
+          setOpenFolderIds((current) => {
+            if (current.has(targetParentId)) return current;
+            const next = new Set(current);
+            next.add(targetParentId);
+            return next;
+          });
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to paste",
+        );
+      }
+    },
+    [
+      clearTreeClipboard,
+      duplicateFile,
+      files,
+      moveFile,
+      pathname,
+      projectId,
+      router,
+      treeClipboard,
+    ],
+  );
+
+  const duplicateItem = useCallback(
+    async (path: string) => {
+      try {
+        const sourceKind = files?.find((file) => file.path === path)?.kind;
+        const result = await duplicateFile({
+          projectId: projectId as Id<"projects">,
+          path,
+        });
+        toast.success("Duplicated");
+        if (sourceKind === "file") {
+          router.push(`/projects/${projectId}/files/${result.path}`);
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to duplicate",
+        );
+      }
+    },
+    [duplicateFile, files, projectId, router],
+  );
+
+  const openInTerminal = useCallback(
+    (folderPath: string) => {
+      requestTerminalCwd(toTerminalCwd(folderPath));
+    },
+    [requestTerminalCwd],
+  );
+
+  const findInFolder = useCallback(() => {
+    setLeftPanelView("search");
+  }, [setLeftPanelView]);
+
+  const attachToChat = useCallback(
+    (path: string, kind: "file" | "folder", asNewChat: boolean) => {
+      if (!files) return;
+      const paths = collectAttachPaths(files, path, kind);
+      if (paths.length === 0) {
+        toast.message("No files to attach");
+        return;
+      }
+
+      const state = useWorkspaceStore.getState();
+      if (!state.aiPanelOpen) {
+        setAiPanelOpen();
+      }
+      if (asNewChat) {
+        requestNewAiChat();
+      }
+      setPendingChatAttachPaths(paths);
+      toast.success(
+        paths.length === 1
+          ? "Added to chat"
+          : `Added ${paths.length} files to chat`,
+      );
+    },
+    [files, requestNewAiChat, setAiPanelOpen, setPendingChatAttachPaths],
+  );
+
+  const handleTreeKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (!tree || renamingInputFocused()) {
+        return;
+      }
+
+      const visibleItems = flattenVisibleTree(tree, openFolderIds);
+      if (visibleItems.length === 0) {
+        return;
+      }
+
+      const currentIndex = focusedId
+        ? visibleItems.findIndex((item) => item.node.id === focusedId)
+        : -1;
+      const current =
+        currentIndex >= 0 ? visibleItems[currentIndex] : undefined;
+
+      if (isModKey(event) && !event.altKey) {
+        const key = event.key.toLowerCase();
+        if (key === "x" && current) {
+          event.preventDefault();
+          cutItem(current.node.path);
+          return;
+        }
+        if (key === "c" && current) {
+          event.preventDefault();
+          copyItem(current.node.path);
+          return;
+        }
+        if (key === "v") {
+          event.preventDefault();
+          const targetParentId =
+            current?.node.kind === "folder"
+              ? current.node.id
+              : current?.parentId;
+          void pasteInto(targetParentId);
+          return;
+        }
+      }
+
+      if (event.key === "F2" && current) {
+        event.preventDefault();
+        setPendingRenameId(current.node.id);
+        return;
+      }
+
+      if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        current &&
+        !isModKey(event)
+      ) {
+        event.preventDefault();
+        setPendingDeleteId(current.node.id);
+        return;
+      }
+
+      switch (event.key) {
+        case "ArrowDown": {
+          event.preventDefault();
+          const nextIndex =
+            currentIndex < visibleItems.length - 1 ? currentIndex + 1 : 0;
+          setFocusedId(visibleItems[nextIndex].node.id);
+          break;
+        }
+        case "ArrowUp": {
+          event.preventDefault();
+          const nextIndex =
+            currentIndex > 0
+              ? currentIndex - 1
+              : visibleItems.length - 1;
+          setFocusedId(visibleItems[nextIndex].node.id);
+          break;
+        }
+        case "ArrowRight": {
+          if (currentIndex < 0) {
+            return;
+          }
+
+          const item = visibleItems[currentIndex];
+          if (item.node.kind !== "folder") {
+            return;
+          }
+
+          event.preventDefault();
+          if (!openFolderIds.has(item.node.id)) {
+            toggleFolder(item.node.id);
+            return;
+          }
+
+          const next = visibleItems[currentIndex + 1];
+          if (next?.parentId === item.node.id) {
+            setFocusedId(next.node.id);
+          }
+          break;
+        }
+        case "ArrowLeft": {
+          if (currentIndex < 0) {
+            return;
+          }
+
+          const item = visibleItems[currentIndex];
+          event.preventDefault();
+
+          if (
+            item.node.kind === "folder" &&
+            openFolderIds.has(item.node.id)
+          ) {
+            toggleFolder(item.node.id);
+            return;
+          }
+
+          if (item.parentId) {
+            setFocusedId(item.parentId);
+          }
+          break;
+        }
+      }
+    },
+    [
+      copyItem,
+      cutItem,
+      focusedId,
+      openFolderIds,
+      pasteInto,
+      toggleFolder,
+      tree,
+    ],
+  );
+
+  useEffect(() => {
+    if (files !== undefined && files.length === 0) {
+      void seedDefaults({ projectId: projectId as Id<"projects"> });
+    }
+  }, [files, projectId, seedDefaults]);
+
+  const renderPendingCreate = (
+    parentId: Id<"projectFiles"> | undefined,
+    depth: number,
+  ) => {
     if (!pendingCreate || pendingCreate.parentId !== parentId) {
       return null;
     }
@@ -374,6 +634,27 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     );
   };
 
+  const backgroundMenuProps: FileTreeMenuContentProps = {
+    isFolder: true,
+    showItemActions: false,
+    canPaste,
+    onNewFile: () => startCreate("file"),
+    onNewFolder: () => startCreate("folder"),
+    onPaste: () => void pasteInto(undefined),
+    onOpen: () => {},
+    onOpenInTerminal: () => openInTerminal(""),
+    onAddToChat: () => {},
+    onAddToNewChat: () => {},
+    onFindInFolder: findInFolder,
+    onCut: () => {},
+    onCopy: () => {},
+    onDuplicate: () => {},
+    onCopyPath: () => {},
+    onCopyRelativePath: () => {},
+    onRename: () => {},
+    onDelete: () => {},
+  };
+
   if (files === undefined) {
     return (
       <p className="px-3 py-2 text-[11px] text-[#787878]">Loading files…</p>
@@ -387,7 +668,6 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
           onNewFile={() => startCreate("file")}
           onNewFolder={() => startCreate("folder")}
           onCollapseAll={collapseAll}
-          onRefresh={refreshTree}
         />
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -398,14 +678,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
               ) : null}
             </div>
           </ContextMenuTrigger>
-          <FileTreeMenuContent
-            isFolder
-            showItemActions={false}
-            onNewFile={() => startCreate("file")}
-            onNewFolder={() => startCreate("folder")}
-            onRename={() => {}}
-            onDelete={() => {}}
-          />
+          <FileTreeMenuContent {...backgroundMenuProps} />
         </ContextMenu>
       </div>
     );
@@ -417,7 +690,6 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         onNewFile={() => startCreate("file")}
         onNewFolder={() => startCreate("folder")}
         onCollapseAll={collapseAll}
-        onRefresh={refreshTree}
       />
 
       <ContextMenu>
@@ -441,19 +713,35 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
                 pendingCreate={pendingCreate}
                 onStartCreate={startCreate}
                 renderPendingCreate={renderPendingCreate}
+                canPaste={canPaste}
+                cutPath={
+                  treeClipboard?.mode === "cut" &&
+                  treeClipboard.projectId === projectId
+                    ? treeClipboard.path
+                    : null
+                }
+                pendingRenameId={pendingRenameId}
+                onPendingRenameHandled={() => setPendingRenameId(null)}
+                pendingDeleteId={pendingDeleteId}
+                onPendingDeleteHandled={() => setPendingDeleteId(null)}
+                onCut={cutItem}
+                onCopy={copyItem}
+                onPaste={pasteInto}
+                onDuplicate={duplicateItem}
+                onCopyPath={(path) => void copyPathToClipboard(path, "Path")}
+                onCopyRelativePath={(path) =>
+                  void copyPathToClipboard(path, "Relative path")
+                }
+                onOpenInTerminal={openInTerminal}
+                onFindInFolder={findInFolder}
+                onAddToChat={(path, kind) => attachToChat(path, kind, false)}
+                onAddToNewChat={(path, kind) => attachToChat(path, kind, true)}
               />
             ))}
             {renderPendingCreate(undefined, 0)}
           </nav>
         </ContextMenuTrigger>
-        <FileTreeMenuContent
-          isFolder
-          showItemActions={false}
-          onNewFile={() => startCreate("file")}
-          onNewFolder={() => startCreate("folder")}
-          onRename={() => {}}
-          onDelete={() => {}}
-        />
+        <FileTreeMenuContent {...backgroundMenuProps} />
       </ContextMenu>
     </div>
   );
@@ -471,12 +759,10 @@ function TreeToolbar({
   onNewFile,
   onNewFolder,
   onCollapseAll,
-  onRefresh,
 }: {
   onNewFile: () => void;
   onNewFolder: () => void;
   onCollapseAll: () => void;
-  onRefresh: () => void;
 }) {
   return (
     <div className="flex items-center gap-0.5 border-b border-[#1e1f22] px-1 py-1">
@@ -488,9 +774,6 @@ function TreeToolbar({
       </TreeToolbarButton>
       <TreeToolbarButton label="Collapse All" onClick={onCollapseAll}>
         <ListCollapseIcon className="size-3.5" />
-      </TreeToolbarButton>
-      <TreeToolbarButton label="Refresh" onClick={onRefresh}>
-        <RefreshCwIcon className="size-3.5" />
       </TreeToolbarButton>
     </div>
   );
@@ -522,8 +805,20 @@ function TreeToolbarButton({
 
 type FileTreeMenuContentProps = {
   isFolder: boolean;
+  canPaste: boolean;
   onNewFile: () => void;
   onNewFolder: () => void;
+  onOpen: () => void;
+  onOpenInTerminal: () => void;
+  onAddToChat: () => void;
+  onAddToNewChat: () => void;
+  onFindInFolder: () => void;
+  onCut: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  onDuplicate: () => void;
+  onCopyPath: () => void;
+  onCopyRelativePath: () => void;
   onRename: () => void;
   onDelete: () => void;
   menuType?: "context" | "dropdown";
@@ -532,53 +827,155 @@ type FileTreeMenuContentProps = {
 
 function FileTreeMenuContent({
   isFolder,
+  canPaste,
   onNewFile,
   onNewFolder,
+  onOpen,
+  onOpenInTerminal,
+  onAddToChat,
+  onAddToNewChat,
+  onFindInFolder,
+  onCut,
+  onCopy,
+  onPaste,
+  onDuplicate,
+  onCopyPath,
+  onCopyRelativePath,
   onRename,
   onDelete,
   menuType = "context",
   showItemActions = true,
 }: FileTreeMenuContentProps) {
-  const itemClassName = "text-[12px] focus:bg-[#4e5155] focus:text-[#dfdfdf]";
+  const itemClassName =
+    "cursor-default gap-0 py-1 text-[12px] text-[#dfdfdf] focus:bg-[#064eb3] focus:text-white data-[disabled]:text-[#787878]";
   const destructiveClassName =
-    "text-[12px] focus:bg-[#5c2b29] focus:text-[#ff6b68]";
+    "cursor-default gap-0 py-1 text-[12px] text-[#dfdfdf] focus:bg-[#5c2b29] focus:text-[#ff6b68]";
+  const shortcutClassName = "pl-6 text-[11px] tracking-normal text-[#9a9a9a]";
+  const separatorClassName = "mx-0 my-1 bg-[#4e5155]";
 
   const Item = menuType === "dropdown" ? DropdownMenuItem : ContextMenuItem;
   const Separator =
     menuType === "dropdown" ? DropdownMenuSeparator : ContextMenuSeparator;
+  const Shortcut =
+    menuType === "dropdown" ? DropdownMenuShortcut : ContextMenuShortcut;
   const Content =
     menuType === "dropdown" ? DropdownMenuContent : ContextMenuContent;
 
   return (
-    <Content className="min-w-44 border-[#4e5155] bg-[#3c3f41] text-[#dfdfdf]">
+    <Content className="min-w-56 rounded-md border-[#4e5155] bg-[#3c3f41] p-1 text-[#dfdfdf] shadow-lg">
       {isFolder ? (
         <>
           <Item onClick={onNewFile} className={itemClassName}>
-            <FilePlusIcon className="size-3.5" />
-            New File
+            New File...
+            <Shortcut className={shortcutClassName}>A</Shortcut>
           </Item>
           <Item onClick={onNewFolder} className={itemClassName}>
-            <FolderPlusIcon className="size-3.5" />
-            New Folder
+            New Folder...
+            <Shortcut className={shortcutClassName}>F</Shortcut>
           </Item>
-          <Separator className="bg-[#4e5155]" />
+          <Separator className={separatorClassName} />
+          {showItemActions ? (
+            <>
+              <Item onClick={onOpenInTerminal} className={itemClassName}>
+                Open in Integrated Terminal
+              </Item>
+              <Separator className={separatorClassName} />
+              <Item onClick={onAddToChat} className={itemClassName}>
+                Add Directory to Chat
+              </Item>
+              <Item onClick={onAddToNewChat} className={itemClassName}>
+                Add Directory to New Chat
+              </Item>
+              <Separator className={separatorClassName} />
+              <Item onClick={onFindInFolder} className={itemClassName}>
+                Find in Folder...
+                <Shortcut className={shortcutClassName}>Shift+Alt+F</Shortcut>
+              </Item>
+              <Separator className={separatorClassName} />
+            </>
+          ) : (
+            <>
+              <Item onClick={onOpenInTerminal} className={itemClassName}>
+                Open in Integrated Terminal
+              </Item>
+              <Separator className={separatorClassName} />
+              <Item onClick={onFindInFolder} className={itemClassName}>
+                Find in Folder...
+                <Shortcut className={shortcutClassName}>Shift+Alt+F</Shortcut>
+              </Item>
+              <Separator className={separatorClassName} />
+            </>
+          )}
         </>
-      ) : null}
+      ) : (
+        <>
+          <Item onClick={onOpen} className={itemClassName}>
+            Open
+          </Item>
+          <Separator className={separatorClassName} />
+          <Item onClick={onAddToChat} className={itemClassName}>
+            Add File to Chat
+          </Item>
+          <Item onClick={onAddToNewChat} className={itemClassName}>
+            Add File to New Chat
+          </Item>
+          <Separator className={separatorClassName} />
+        </>
+      )}
+
       {showItemActions ? (
         <>
+          <Item onClick={onCut} className={itemClassName}>
+            Cut
+            <Shortcut className={shortcutClassName}>X</Shortcut>
+          </Item>
+          <Item onClick={onCopy} className={itemClassName}>
+            Copy
+            <Shortcut className={shortcutClassName}>Y</Shortcut>
+          </Item>
+          <Item
+            onClick={onPaste}
+            disabled={!canPaste}
+            className={itemClassName}
+          >
+            Paste
+            <Shortcut className={shortcutClassName}>P</Shortcut>
+          </Item>
+          {!isFolder ? (
+            <Item onClick={onDuplicate} className={itemClassName}>
+              Duplicate
+            </Item>
+          ) : null}
+          <Separator className={separatorClassName} />
+          <Item onClick={onCopyPath} className={itemClassName}>
+            Copy Path
+            <Shortcut className={shortcutClassName}>Shift+Alt+C</Shortcut>
+          </Item>
+          <Item onClick={onCopyRelativePath} className={itemClassName}>
+            Copy Relative Path
+            <Shortcut className={shortcutClassName}>
+              Ctrl+M Ctrl+Shift+C
+            </Shortcut>
+          </Item>
+          <Separator className={separatorClassName} />
           <Item onClick={onRename} className={itemClassName}>
-            <PencilIcon className="size-3.5" />
-            Rename
+            Rename...
+            <Shortcut className={shortcutClassName}>R</Shortcut>
           </Item>
           <Item
             variant={menuType === "context" ? "destructive" : undefined}
             onClick={onDelete}
             className={destructiveClassName}
           >
-            <Trash2Icon className="size-3.5" />
             Delete
+            <Shortcut className={shortcutClassName}>Delete</Shortcut>
           </Item>
         </>
+      ) : canPaste ? (
+        <Item onClick={onPaste} className={itemClassName}>
+          Paste
+          <Shortcut className={shortcutClassName}>P</Shortcut>
+        </Item>
       ) : null}
     </Content>
   );
@@ -598,6 +995,23 @@ type FileTreeItemProps = {
     parentId: Id<"projectFiles"> | undefined,
     depth: number,
   ) => React.ReactNode;
+  canPaste: boolean;
+  cutPath: string | null;
+  pendingRenameId: Id<"projectFiles"> | null;
+  onPendingRenameHandled: () => void;
+  pendingDeleteId: Id<"projectFiles"> | null;
+  onPendingDeleteHandled: () => void;
+  onCut: (path: string) => void;
+  onCopy: (path: string) => void;
+  onPaste: (targetParentId?: Id<"projectFiles">) => Promise<void>;
+  onDuplicate: (path: string) => Promise<void>;
+  onCopyPath: (path: string) => void;
+  onCopyRelativePath: (path: string) => void;
+  onOpenInTerminal: (folderPath: string) => void;
+  onFindInFolder: () => void;
+  onAddToChat: (path: string, kind: "file" | "folder") => void;
+  onAddToNewChat: (path: string, kind: "file" | "folder") => void;
+  parentId?: Id<"projectFiles">;
 };
 
 function FileTreeItem({
@@ -611,6 +1025,23 @@ function FileTreeItem({
   pendingCreate,
   onStartCreate,
   renderPendingCreate,
+  canPaste,
+  cutPath,
+  pendingRenameId,
+  onPendingRenameHandled,
+  pendingDeleteId,
+  onPendingDeleteHandled,
+  onCut,
+  onCopy,
+  onPaste,
+  onDuplicate,
+  onCopyPath,
+  onCopyRelativePath,
+  onOpenInTerminal,
+  onFindInFolder,
+  onAddToChat,
+  onAddToNewChat,
+  parentId,
 }: FileTreeItemProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -621,9 +1052,17 @@ function FileTreeItem({
   const isFolder = node.kind === "folder";
   const open = isFolder && (openFolderIds.has(node.id) || isPendingChild);
   const isFocused = focusedId === node.id;
-  const [renaming, setRenaming] = useState(false);
+  const isCut =
+    cutPath === node.path ||
+    (cutPath !== null && node.path.startsWith(`${cutPath}/`));
+  const isRenameRequested = pendingRenameId === node.id;
+  const isDeleteRequested = pendingDeleteId === node.id;
+  const [manualRenaming, setManualRenaming] = useState(false);
+  const renaming = manualRenaming || isRenameRequested;
   const [renameValue, setRenameValue] = useState(node.name);
+  const [renameRequestKey, setRenameRequestKey] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteDialogOpen = deleteOpen || isDeleteRequested;
   const [menuOpen, setMenuOpen] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -643,14 +1082,29 @@ function FileTreeItem({
     }
   }, [renaming]);
 
+  const currentRenameRequestKey = isRenameRequested ? node.id : null;
+  if (currentRenameRequestKey !== renameRequestKey) {
+    setRenameRequestKey(currentRenameRequestKey);
+    if (currentRenameRequestKey) {
+      setRenameValue(node.name);
+    }
+  }
+
   const startRename = () => {
     setRenameValue(node.name);
-    setRenaming(true);
+    setManualRenaming(true);
+  };
+
+  const stopRename = () => {
+    setManualRenaming(false);
+    if (isRenameRequested) {
+      onPendingRenameHandled();
+    }
   };
 
   const commitRename = async () => {
     const name = renameValue.trim();
-    setRenaming(false);
+    stopRename();
     if (!name || name === node.name) return;
 
     try {
@@ -687,13 +1141,41 @@ function FileTreeItem({
       );
     } finally {
       setDeleteOpen(false);
+      if (isDeleteRequested) {
+        onPendingDeleteHandled();
+      }
     }
   };
 
-  const menuProps = {
+  const setDeleteDialogOpen = (open: boolean) => {
+    setDeleteOpen(open);
+    if (!open && isDeleteRequested) {
+      onPendingDeleteHandled();
+    }
+  };
+
+  const pasteTargetId = isFolder ? node.id : parentId;
+
+  const menuProps: FileTreeMenuContentProps = {
     isFolder,
+    canPaste,
     onNewFile: () => onStartCreate("file", isFolder ? node.id : undefined),
     onNewFolder: () => onStartCreate("folder", isFolder ? node.id : undefined),
+    onOpen: () => {
+      if (!isFolder) {
+        router.push(href);
+      }
+    },
+    onOpenInTerminal: () => onOpenInTerminal(node.path),
+    onAddToChat: () => onAddToChat(node.path, node.kind),
+    onAddToNewChat: () => onAddToNewChat(node.path, node.kind),
+    onFindInFolder,
+    onCut: () => onCut(node.path),
+    onCopy: () => onCopy(node.path),
+    onPaste: () => void onPaste(pasteTargetId),
+    onDuplicate: () => void onDuplicate(node.path),
+    onCopyPath: () => onCopyPath(node.path),
+    onCopyRelativePath: () => onCopyRelativePath(node.path),
     onRename: startRename,
     onDelete: () => setDeleteOpen(true),
   };
@@ -716,6 +1198,7 @@ function FileTreeItem({
       className={cn(
         "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] text-[#bcbec4] hover:bg-[#3c3f41] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#3574f0]",
         isFocused && "bg-[#3c3f41] text-[#dfdfdf]",
+        isCut && "opacity-50",
       )}
       style={{ paddingLeft: `${8 + depth * 12}px` }}
     >
@@ -737,7 +1220,7 @@ function FileTreeItem({
           value={renameValue}
           onChange={setRenameValue}
           onCommit={() => void commitRename()}
-          onCancel={() => setRenaming(false)}
+          onCancel={stopRename}
         />
       ) : (
         <span className="truncate">{node.name}</span>
@@ -756,7 +1239,7 @@ function FileTreeItem({
         value={renameValue}
         onChange={setRenameValue}
         onCommit={() => void commitRename()}
-        onCancel={() => setRenaming(false)}
+        onCancel={stopRename}
       />
     </div>
   ) : (
@@ -773,6 +1256,7 @@ function FileTreeItem({
         active || isFocused
           ? "bg-[#3c3f41] text-[#dfdfdf]"
           : "text-[#9a9a9a] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
+        isCut && "opacity-50",
       )}
       style={{ paddingLeft: `${20 + depth * 12}px` }}
     >
@@ -834,13 +1318,30 @@ function FileTreeItem({
               pendingCreate={pendingCreate}
               onStartCreate={onStartCreate}
               renderPendingCreate={renderPendingCreate}
+              canPaste={canPaste}
+              cutPath={cutPath}
+              pendingRenameId={pendingRenameId}
+              onPendingRenameHandled={onPendingRenameHandled}
+              pendingDeleteId={pendingDeleteId}
+              onPendingDeleteHandled={onPendingDeleteHandled}
+              onCut={onCut}
+              onCopy={onCopy}
+              onPaste={onPaste}
+              onDuplicate={onDuplicate}
+              onCopyPath={onCopyPath}
+              onCopyRelativePath={onCopyRelativePath}
+              onOpenInTerminal={onOpenInTerminal}
+              onFindInFolder={onFindInFolder}
+              onAddToChat={onAddToChat}
+              onAddToNewChat={onAddToNewChat}
+              parentId={node.id}
             />
           ))}
           {renderPendingCreate(node.id, depth + 1)}
         </>
       ) : null}
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="border-[#4e5155] bg-[#2b2d30] text-[#dfdfdf]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {node.name}?</AlertDialogTitle>
@@ -965,4 +1466,4 @@ function PendingCreateRow({
       />
     </div>
   );
-};
+}

@@ -387,6 +387,62 @@ function PromptInputFields({
   );
 }
 
+function PendingChatAttachBridge({
+  projectId,
+  fileContentsRef,
+}: {
+  projectId: string;
+  fileContentsRef: React.MutableRefObject<Map<string, string>>;
+}) {
+  const files = useProjectFiles(projectId);
+  const referenced = usePromptInputReferencedSources();
+  const pendingChatAttachPaths = useWorkspaceStore(
+    (s) => s.pendingChatAttachPaths,
+  );
+  const requestNewChat = useWorkspaceStore((s) => s.requestNewChat);
+  const setPendingChatAttachPaths = useWorkspaceStore(
+    (s) => s.setPendingChatAttachPaths,
+  );
+
+  useEffect(() => {
+    // Wait until a requested new chat session has mounted.
+    if (requestNewChat) {
+      return;
+    }
+    if (!pendingChatAttachPaths || pendingChatAttachPaths.length === 0) {
+      return;
+    }
+    if (!files) {
+      return;
+    }
+
+    for (const path of pendingChatAttachPaths) {
+      const file = files.find((item) => item.path === path);
+      if (!file || file.kind !== "file") continue;
+
+      fileContentsRef.current.set(file.path, file.content ?? "");
+      referenced.add({
+        type: "source-document",
+        sourceId: file.path,
+        title: file.name,
+        filename: file.name,
+        mediaType: "text/plain",
+      });
+    }
+
+    setPendingChatAttachPaths(null);
+  }, [
+    fileContentsRef,
+    files,
+    pendingChatAttachPaths,
+    referenced,
+    requestNewChat,
+    setPendingChatAttachPaths,
+  ]);
+
+  return null;
+}
+
 function PromptInputShell({
   onSubmit,
   ...props
@@ -416,6 +472,10 @@ function PromptInputShell({
       className="relative rounded-xl border-[#4e5155] bg-[#1e1f22] shadow-none **:data-[slot=input-group]:border-[#4e5155] **:data-[slot=input-group]:bg-[#1e1f22]"
     >
       <ReferencedSourcesBridge referencedRef={referencedRef} />
+      <PendingChatAttachBridge
+        projectId={props.projectId}
+        fileContentsRef={fileContentsRef}
+      />
       <PromptInputFields
         {...props}
         mentionOpen={mentionOpen}

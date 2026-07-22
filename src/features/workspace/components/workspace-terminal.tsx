@@ -59,6 +59,10 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const changedFiles = useChangedFiles(projectId);
   const { initialize } = useInitializeGitRepo(projectId);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
+  const terminalCwdRequest = useWorkspaceStore((s) => s.terminalCwdRequest);
+  const clearTerminalCwdRequest = useWorkspaceStore(
+    (s) => s.clearTerminalCwdRequest,
+  );
 
   const projectRef = useRef(project);
   const filesRef = useRef(files);
@@ -72,6 +76,20 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const projectName = projectRef.current?.name ?? "project";
     term.write(`\r\n\x1b[32m${projectName}\x1b[0m:\x1b[34m${cwdRef.current}\x1b[0m $ `);
   }, []);
+
+  useEffect(() => {
+    if (!terminalCwdRequest) {
+      return;
+    }
+
+    cwdRef.current = terminalCwdRequest;
+    const term = terminalRef.current;
+    if (term) {
+      term.writeln(`\r\nChanged directory to ${terminalCwdRequest}`);
+      writePrompt(term);
+    }
+    clearTerminalCwdRequest();
+  }, [clearTerminalCwdRequest, terminalCwdRequest, writePrompt]);
 
   const getContext = useCallback((): ShellContext | null => {
     const currentProject = projectRef.current;
