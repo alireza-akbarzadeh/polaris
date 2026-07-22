@@ -11,7 +11,7 @@ import {
 } from "@/features/workspace/hooks/use-project-files";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useFileBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
-import { isPreviewableFile } from "@/features/workspace/lib/preview-document";
+import { isPreviewableFile } from "@/features/workspace/lib/preview-utils";
 import { cn } from "@/lib/utils";
 
 type EditorPanelTab = "code" | "preview";

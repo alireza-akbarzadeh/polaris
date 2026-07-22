@@ -2,6 +2,9 @@
   "name": "polaris",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "backend": "npx convex dev",
@@ -26,6 +29,7 @@
     "@hookform/resolvers": "^5.4.0",
     "@inngest/middleware-sentry": "^1.0.0",
     "@mendable/firecrawl-js": "^4.30.1",
+    "@octokit/rest": "^22.0.1",
     "@radix-ui/react-use-controllable-state": "^1.2.4",
     "@react-symbols/icons": "^1.4.1",
     "@rive-app/react-webgl2": "^4.29.5",

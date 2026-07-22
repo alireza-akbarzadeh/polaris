@@ -21,10 +21,25 @@ export default defineSchema({
         v.literal("cancelled")
       )
     ),
-    exportRepoUrl: v.optional(v.string())
+    exportRepoUrl: v.optional(v.string()),
+    githubRepoUrl: v.optional(v.string()),
+    githubBranch: v.optional(v.string()),
+    lastCommitSha: v.optional(v.string()),
+    source: v.optional(
+      v.union(v.literal("blank"), v.literal("github")),
+    ),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"]),
+
+  githubConnections: defineTable({
+    userId: v.string(),
+    githubUserId: v.string(),
+    username: v.string(),
+    avatarUrl: v.optional(v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   projectFiles: defineTable({
     projectId: v.id("projects"),

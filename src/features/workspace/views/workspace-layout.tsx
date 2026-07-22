@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/resizable";
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
-import { WorkspaceFileTree } from "@/features/workspace/components/workspace-file-tree";
+import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
+import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
@@ -130,14 +131,7 @@ export function WorkspaceLayout({
           className="bg-[#2b2d30]"
         >
           <aside className="flex h-full flex-col border-r border-[#1e1f22]">
-            <div className="flex h-7 items-center border-b border-[#1e1f22] px-3">
-              <p className="text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
-                Project
-              </p>
-            </div>
-            <div className="flex-1 overflow-auto p-2">
-              <WorkspaceFileTree projectId={projectId} />
-            </div>
+            <WorkspaceSidebar projectId={projectId} />
           </aside>
         </ResizablePanel>
 
@@ -201,6 +195,7 @@ export function WorkspaceLayout({
       </ResizablePanelGroup>
 
       <WorkspaceSettingsDialog />
+      <WorkspaceGoToFileDialog projectId={projectId} />
     </div>
   );
 }

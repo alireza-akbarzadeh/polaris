@@ -6,6 +6,8 @@ export type PanelSizes = {
   ai: number;
 };
 
+export type LeftPanelView = "explorer" | "search" | "git";
+
 export type BreadcrumbSegment = {
   label: string;
   href?: string;
@@ -20,6 +22,8 @@ export type WorkspacePrefs = {
 
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
+  goToFileOpen: boolean;
+  leftPanelView: LeftPanelView;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
 
@@ -29,6 +33,9 @@ type WorkspaceState = WorkspacePrefs & {
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
+  openGoToFile: () => void;
+  closeGoToFile: () => void;
+  setLeftPanelView: (view: LeftPanelView) => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
   hydrate: (prefs: Partial<WorkspacePrefs>) => void;
@@ -48,9 +55,17 @@ export const DEFAULT_WORKSPACE_PREFS: WorkspacePrefs = {
   panelSizes: DEFAULT_PANEL_SIZES,
 };
 
+export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
+  explorer: "Project",
+  search: "Find in Files",
+  git: "Git",
+};
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ...DEFAULT_WORKSPACE_PREFS,
   settingsOpen: false,
+  goToFileOpen: false,
+  leftPanelView: "explorer",
   hydrated: false,
   breadcrumb: [
     { label: "src" },
@@ -64,6 +79,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+  openGoToFile: () => set({ goToFileOpen: true }),
+  closeGoToFile: () => set({ goToFileOpen: false }),
+  setLeftPanelView: (view) =>
+    set({ leftPanelView: view, sidebarOpen: true }),
   setPanelSizes: (sizes) =>
     set((s) => ({
       panelSizes: { ...s.panelSizes, ...sizes },

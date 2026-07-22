@@ -11,14 +11,14 @@ import { AlertCircleIcon, FolderOpenIcon, Loader2Icon } from "lucide-react";
 import Image from "next/image";
 
 export const getProjectsIcons = (project: Doc<"projects">) => {
-  if (project.importStatus === "completed") {
+  if (project.source === "github" || project.importStatus) {
+    if (project.importStatus === "failed") {
+      return <AlertCircleIcon className="size-3.5 text-muted-foreground" />;
+    }
+    if (project.importStatus === "importing") {
+      return <Loader2Icon className="size-3.5 text-muted-foreground animate-spin" />;
+    }
     return <Image src="/images/github.png" alt="GitHub" width={14} height={14} className="size-3.5 dark:invert" />;
-  }
-  if (project.importStatus === "failed") {
-    return <AlertCircleIcon className="size-3.5 text-muted-foreground" />;
-  }
-  if (project.importStatus === "importing") {
-    return <Loader2Icon className="size-3.5 text-muted-foreground animate-spin" />;
   }
   return <FolderOpenIcon className="size-3.5 text-muted-foreground " />
 };

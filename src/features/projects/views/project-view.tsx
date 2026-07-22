@@ -12,6 +12,8 @@ import { ProjectActionRow } from "@/features/projects/components/project-action-
 import { ProjectCommandDialog } from "@/features/projects/components/project-command-dialog";
 import { ProjectList } from "@/features/projects/components/project-list";
 import { ThemeSection } from "@/features/projects/components/theme-sections";
+import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
+import { GitHubConnectionStatus } from "@/features/github/components/github-connection-status";
 import { useCreateProject } from "@/features/projects/hooks/use-projects";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
@@ -29,6 +31,7 @@ const display = Manrope({
 export function ProjectView() {
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -144,7 +147,7 @@ export function ProjectView() {
                   description="Pull a repository into Polaris"
                   shortcut="⌘I"
                   delay={0.16}
-                  onClick={() => { }}
+                  onClick={() => setCloneOpen(true)}
                 />
                 <ThemeSection />
               </div>
@@ -157,21 +160,13 @@ export function ProjectView() {
 
           <footer className="flex items-center justify-between border-t border-border/60 px-6 py-2.5 text-[11px] text-muted-foreground">
             <UserButton />
-            <span className="inline-flex items-center gap-1.5">
-              <Image
-                src="/images/github.png"
-                alt=""
-                width={12}
-                height={12}
-                className="size-5 opacity-70 dark:invert"
-              />
-              Connected via Clerk
-            </span>
+            <GitHubConnectionStatus />
             <span className="font-mono tabular-nums opacity-70">v0.1.0</span>
           </footer>
         </div>
       </motion.div>
       <ProjectCommandDialog open={open} onOpenChange={setOpen} />
+      <CloneFromGitHubDialog open={cloneOpen} onOpenChange={setCloneOpen} />
     </div>
   );
 }

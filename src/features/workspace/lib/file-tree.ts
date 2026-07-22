@@ -3,7 +3,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 export type FileTreeNode = {
   id: Id<"projectFiles">;
   name: string;
-  path?: string;
+  path: string;
   kind: "file" | "folder";
   children?: FileTreeNode[];
 };
@@ -31,7 +31,7 @@ export function buildFileTree(files: Doc<"projectFiles">[]): FileTreeNode[] {
     return sortNodes(byParent.get(parentKey) ?? []).map((file) => ({
       id: file._id,
       name: file.name,
-      path: file.kind === "file" ? file.path : undefined,
+      path: file.path,
       kind: file.kind,
       children: file.kind === "folder" ? walk(file._id) : undefined,
     }));

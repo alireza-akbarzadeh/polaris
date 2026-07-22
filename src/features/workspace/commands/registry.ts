@@ -1,4 +1,7 @@
-import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import {
+  useWorkspaceStore,
+  type LeftPanelView,
+} from "@/features/workspace/store/workspace-store";
 
 export type CommandId =
   | "toggleSidebar"
@@ -6,7 +9,13 @@ export type CommandId =
   | "toggleAiPanel"
   | "openSettings"
   | "toggleSettings"
-  | "closeSettings";
+  | "closeSettings"
+  | "openGoToFile"
+  | "closeGoToFile"
+  | "showExplorer"
+  | "showSearch"
+  | "showGit"
+  | "findInFiles";
 
 export type Command = {
   id: CommandId;
@@ -18,6 +27,15 @@ export type Command = {
 };
 
 const store = () => useWorkspaceStore.getState();
+
+function showPanel(view: LeftPanelView) {
+  const s = store();
+  if (s.leftPanelView === view && s.sidebarOpen) {
+    s.toggleSidebar();
+  } else {
+    s.setLeftPanelView(view);
+  }
+}
 
 export const workspaceCommands: Command[] = [
   {
@@ -54,8 +72,45 @@ export const workspaceCommands: Command[] = [
     shortcut: "escape",
     allowInInput: true,
     run: () => {
-      if (store().settingsOpen) store().closeSettings();
+      const s = store();
+      if (s.settingsOpen) s.closeSettings();
+      else if (s.goToFileOpen) s.closeGoToFile();
     },
+  },
+  {
+    id: "openGoToFile",
+    shortcut: "mod+p",
+    allowInInput: true,
+    run: () => store().openGoToFile(),
+  },
+  {
+    id: "closeGoToFile",
+    allowInInput: true,
+    run: () => store().closeGoToFile(),
+  },
+  {
+    id: "showExplorer",
+    shortcut: "mod+1",
+    allowInInput: true,
+    run: () => showPanel("explorer"),
+  },
+  {
+    id: "showSearch",
+    shortcut: "mod+shift+f",
+    allowInInput: true,
+    run: () => showPanel("search"),
+  },
+  {
+    id: "showGit",
+    shortcut: "mod+9",
+    allowInInput: true,
+    run: () => showPanel("git"),
+  },
+  {
+    id: "findInFiles",
+    shortcut: "mod+shift+f",
+    allowInInput: true,
+    run: () => showPanel("search"),
   },
 ];
 
@@ -102,8 +157,9 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
     return false;
   }
 
-  if (command.id === "closeSettings" && !store().settingsOpen) {
-    return false;
+  if (command.id === "closeSettings") {
+    const s = store();
+    if (!s.settingsOpen && !s.goToFileOpen) return false;
   }
 
   event.preventDefault();

@@ -9,7 +9,10 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as github from "../github.js";
+import type * as githubImport from "../githubImport.js";
 import type * as lib_projectFiles from "../lib/projectFiles.js";
+import type * as lib_github from "../lib/github.js";
 import type * as projectFiles from "../projectFiles.js";
 import type * as projects from "../projects.js";
 import type * as userPreferences from "../userPreferences.js";
@@ -22,7 +25,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  github: typeof github;
+  githubImport: typeof githubImport;
   "lib/projectFiles": typeof lib_projectFiles;
+  "lib/github": typeof lib_github;
   projectFiles: typeof projectFiles;
   projects: typeof projects;
   userPreferences: typeof userPreferences;
