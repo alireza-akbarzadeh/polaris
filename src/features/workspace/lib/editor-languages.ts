@@ -40,3 +40,23 @@ export function languageExtensionForPath(filePath: string): Extension[] {
 export function supportsAiSuggestion(filePath: string): boolean {
   return /\.(tsx?|jsx?|mjs|cjs)$/.test(filePath.toLowerCase());
 }
+
+const LANGUAGE_LABELS: Array<{ test: RegExp; label: string }> = [
+  { test: /\.tsx$/i, label: "TypeScript React" },
+  { test: /\.ts$/i, label: "TypeScript" },
+  { test: /\.jsx$/i, label: "JavaScript React" },
+  { test: /\.(mjs|cjs|js)$/i, label: "JavaScript" },
+  { test: /\.module\.css$/i, label: "CSS Module" },
+  { test: /\.css$/i, label: "CSS" },
+  { test: /\.html?$/i, label: "HTML" },
+  { test: /\.jsonc?$/i, label: "JSON" },
+  { test: /\.mdx?$/i, label: "Markdown" },
+];
+
+export function getLanguageLabel(filePath: string | null | undefined): string {
+  if (!filePath) {
+    return "Plain Text";
+  }
+  const lower = filePath.toLowerCase();
+  return LANGUAGE_LABELS.find((entry) => entry.test.test(lower))?.label ?? "Plain Text";
+}

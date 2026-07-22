@@ -17,6 +17,7 @@ import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
+import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
@@ -196,6 +197,7 @@ export function WorkspaceLayout({
 
       <WorkspaceSettingsDialog />
       <WorkspaceGoToFileDialog projectId={projectId} />
+      <WorkspaceStatusBar projectId={projectId} />
     </div>
   );
 }

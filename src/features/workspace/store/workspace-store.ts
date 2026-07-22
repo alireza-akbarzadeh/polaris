@@ -24,6 +24,7 @@ type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   goToFileOpen: boolean;
   leftPanelView: LeftPanelView;
+  currentFilePath: string | null;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
 
@@ -36,6 +37,7 @@ type WorkspaceState = WorkspacePrefs & {
   openGoToFile: () => void;
   closeGoToFile: () => void;
   setLeftPanelView: (view: LeftPanelView) => void;
+  setCurrentFilePath: (path: string | null) => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
   hydrate: (prefs: Partial<WorkspacePrefs>) => void;
@@ -66,6 +68,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   settingsOpen: false,
   goToFileOpen: false,
   leftPanelView: "explorer",
+  currentFilePath: null,
   hydrated: false,
   breadcrumb: [
     { label: "src" },
@@ -83,6 +86,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeGoToFile: () => set({ goToFileOpen: false }),
   setLeftPanelView: (view) =>
     set({ leftPanelView: view, sidebarOpen: true }),
+  setCurrentFilePath: (path) => set({ currentFilePath: path }),
   setPanelSizes: (sizes) =>
     set((s) => ({
       panelSizes: { ...s.panelSizes, ...sizes },

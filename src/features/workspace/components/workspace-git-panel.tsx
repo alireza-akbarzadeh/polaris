@@ -7,11 +7,14 @@ import {
   GitBranchIcon,
   GitCommitIcon,
   Loader2Icon,
+  UploadIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { GitHubConnectionStatus } from "@/features/github/components/github-connection-status";
+import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import { cn } from "@/lib/utils";
@@ -29,8 +32,10 @@ const GIT_TABS: { id: GitTab; label: string }[] = [
 
 export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
   const [activeTab, setActiveTab] = useState<GitTab>("changes");
+  const [commitMessage, setCommitMessage] = useState("");
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
+  const { push, isPushing } = useCommitAndPush(projectId);
 
   if (project === undefined) {
     return (
@@ -43,6 +48,18 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 
   const isGitHub = project.source === "github" && project.githubRepoUrl;
   const changeCount = changedFiles?.length ?? 0;
+  const canPush =
+    isGitHub && changeCount > 0 && commitMessage.trim().length > 0 && !isPushing;
+
+  const onCommitAndPush = async () => {
+    if (!canPush) return;
+    try {
+      await push(commitMessage.trim());
+      setCommitMessage("");
+    } catch {
+      // toast handled in hook
+    }
+  };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -70,18 +87,54 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
       </div>
 
       {activeTab === "changes" ? (
-        <div className="flex-1 overflow-auto">
-          <div className="border-b border-[#1e1f22] p-3">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="space-y-2 border-b border-[#1e1f22] p-3">
             <GitHubConnectionStatus className="text-[11px]" />
+            {isGitHub ? (
+              <>
+                <Textarea
+                  value={commitMessage}
+                  onChange={(e) => setCommitMessage(e.target.value)}
+                  placeholder="Commit message"
+                  rows={3}
+                  className="min-h-[72px] resize-none border-[#4e5155] bg-[#1e1f22] text-[12px] text-[#dfdfdf] placeholder:text-[#6f737a] focus-visible:ring-[#3574f0]"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canPush}
+                  onClick={() => void onCommitAndPush()}
+                  className="h-7 w-full bg-[#3574f0] text-[11px] text-white hover:bg-[#2d5fd4] disabled:opacity-50"
+                >
+                  {isPushing ? (
+                    <>
+                      <Loader2Icon className="size-3.5 animate-spin" />
+                      Pushing…
+                    </>
+                  ) : (
+                    <>
+                      <UploadIcon className="size-3.5" />
+                      Commit &amp; Push
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <p className="text-[11px] text-[#787878]">
+                Link a GitHub repository to commit and push changes.
+              </p>
+            )}
           </div>
-          <WorkspaceChangeList
-            projectId={projectId}
-            emptyMessage={
-              isGitHub
-                ? "No local changes since last GitHub import"
-                : "No modified files"
-            }
-          />
+          <div className="min-h-0 flex-1 overflow-auto">
+            <WorkspaceChangeList
+              projectId={projectId}
+              emptyMessage={
+                isGitHub
+                  ? "No local changes since last GitHub sync"
+                  : "No modified files"
+              }
+            />
+          </div>
         </div>
       ) : (
         <GitInfoTab project={project} isGitHub={Boolean(isGitHub)} />
@@ -123,7 +176,7 @@ function GitInfoTab({
           {project.lastCommitSha ? (
             <GitInfoRow
               icon={<GitCommitIcon className="size-3.5" />}
-              label="Last import"
+              label="Last push"
               value={project.lastCommitSha.slice(0, 7)}
             />
           ) : null}
@@ -132,7 +185,11 @@ function GitInfoTab({
               Repository
             </p>
             <a
-              href={project.githubRepoUrl}
+              href={
+                project.githubRepoUrl?.startsWith("http")
+                  ? project.githubRepoUrl
+                  : `https://github.com/${project.githubRepoUrl}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 truncate text-[11px] text-[#589df6] hover:underline"
@@ -141,12 +198,6 @@ function GitInfoTab({
               <ExternalLinkIcon className="size-3 shrink-0" />
             </a>
           </div>
-          {project.importStatus === "importing" ? (
-            <p className="flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
-              <Loader2Icon className="size-3 animate-spin" />
-              Importing from GitHub…
-            </p>
-          ) : null}
         </div>
       ) : (
         <div className="space-y-2 p-3">
@@ -158,24 +209,6 @@ function GitInfoTab({
           </p>
         </div>
       )}
-
-      <div className="border-t border-[#1e1f22] p-3">
-        <p className="text-[10px] leading-relaxed text-[#787878]">
-          Push and commit to GitHub are coming soon. Edits are tracked locally
-          in the Changes tab.
-        </p>
-        {isGitHub ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            disabled
-            className="mt-3 h-7 border-[#4e5155] bg-transparent text-[11px] text-[#9a9a9a]"
-          >
-            Push to GitHub (soon)
-          </Button>
-        ) : null}
-      </div>
     </div>
   );
 }

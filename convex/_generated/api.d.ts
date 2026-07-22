@@ -13,6 +13,8 @@ import type * as github from "../github.js";
 import type * as githubActions from "../githubActions.js";
 import type * as githubImport from "../githubImport.js";
 import type * as githubImportMutations from "../githubImportMutations.js";
+import type * as githubPush from "../githubPush.js";
+import type * as githubPushMutations from "../githubPushMutations.js";
 import type * as lib_github from "../lib/github.js";
 import type * as lib_projectFiles from "../lib/projectFiles.js";
 import type * as projectFiles from "../projectFiles.js";
@@ -31,6 +33,8 @@ declare const fullApi: ApiFromModules<{
   githubActions: typeof githubActions;
   githubImport: typeof githubImport;
   githubImportMutations: typeof githubImportMutations;
+  githubPush: typeof githubPush;
+  githubPushMutations: typeof githubPushMutations;
   "lib/github": typeof lib_github;
   "lib/projectFiles": typeof lib_projectFiles;
   projectFiles: typeof projectFiles;

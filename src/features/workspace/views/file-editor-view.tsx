@@ -12,6 +12,7 @@ import {
 import type { Id } from "@/convex/_generated/dataModel";
 import { useFileBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
 import { isPreviewableFile } from "@/features/workspace/lib/preview-utils";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 type EditorPanelTab = "code" | "preview";
@@ -139,8 +140,14 @@ function FileEditorContent({
 
 export function FileEditorView({ projectId, filePath }: FileEditorViewProps) {
   const file = useProjectFile(projectId, filePath);
+  const setCurrentFilePath = useWorkspaceStore((s) => s.setCurrentFilePath);
 
   useFileBreadcrumb(projectId, filePath);
+
+  useEffect(() => {
+    setCurrentFilePath(filePath || null);
+    return () => setCurrentFilePath(null);
+  }, [filePath, setCurrentFilePath]);
 
   if (!filePath) {
     return (
