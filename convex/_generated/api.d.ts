@@ -9,6 +9,8 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as lib_projectFiles from "../lib/projectFiles.js";
+import type * as projectFiles from "../projectFiles.js";
 import type * as projects from "../projects.js";
 import type * as userPreferences from "../userPreferences.js";
 
@@ -20,6 +22,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  "lib/projectFiles": typeof lib_projectFiles;
+  projectFiles: typeof projectFiles;
   projects: typeof projects;
   userPreferences: typeof userPreferences;
 }>;

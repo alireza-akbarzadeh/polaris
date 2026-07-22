@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/resizable";
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
+import { WorkspaceFileTree } from "@/features/workspace/components/workspace-file-tree";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
@@ -134,8 +135,8 @@ export function WorkspaceLayout({
                 Project
               </p>
             </div>
-            <div className="flex-1 p-2 text-[12px] text-[#9a9a9a]">
-              File tree goes here
+            <div className="flex-1 overflow-auto p-2">
+              <WorkspaceFileTree projectId={projectId} />
             </div>
           </aside>
         </ResizablePanel>

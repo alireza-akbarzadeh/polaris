@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import Image from "next/image";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
-import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { useWorkspaceBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
+
+const WELCOME_BREADCRUMB = [{ label: "Welcome" }] as const;
 
 type ProjectWorkspaceHomeProps = {
   projectId: string;
@@ -13,11 +14,8 @@ type ProjectWorkspaceHomeProps = {
 /** Default content for `/projects/[projectId]`. */
 export function ProjectWorkspaceHome({ projectId }: ProjectWorkspaceHomeProps) {
   const project = useProject({ projectId });
-  const setBreadcrumb = useWorkspaceStore((s) => s.setBreadcrumb);
 
-  useEffect(() => {
-    setBreadcrumb([{ label: "Welcome" }]);
-  }, [setBreadcrumb]);
+  useWorkspaceBreadcrumb([...WELCOME_BREADCRUMB]);
 
   return (
     <div className="flex h-full flex-col p-6">

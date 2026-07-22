@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { seedDefaultProjectFiles } from "./lib/projectFiles";
 import { verifyAuth } from "./auth";
 
 
@@ -15,6 +16,7 @@ export const createProject = mutation({
       ownerId: identity.subject,
       updatedAt: Date.now()
     });
+    await seedDefaultProjectFiles(ctx, projectId);
     return projectId
   },
 });

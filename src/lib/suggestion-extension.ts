@@ -8,7 +8,7 @@ import {
     keymap,
   } from "@codemirror/view";
   import { StateEffect, StateField } from "@codemirror/state";
-  import { fetcher } from "./fetcher";
+  import { fetcher } from "./suggestion-fetcher";
   
   const setSuggestionEffect = StateEffect.define<string | null>();
   const suggestionState = StateField.define<string | null>({
