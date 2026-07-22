@@ -1,44 +1,49 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
 import {
+  DownloadIcon,
   ExternalLinkIcon,
   GitBranchIcon,
   GitCommitIcon,
   Loader2Icon,
   UploadIcon,
 } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { GitHubConnectionStatus } from "@/features/github/components/github-connection-status";
 import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
+import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
-import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import {
+  useWorkspaceStore,
+  type GitPanelTab,
+} from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 type WorkspaceGitPanelProps = {
   projectId: string;
 };
 
-type GitTab = "changes" | "history" | "info";
-
-const GIT_TABS: { id: GitTab; label: string }[] = [
+const GIT_TABS: { id: GitPanelTab; label: string }[] = [
   { id: "changes", label: "Changes" },
   { id: "history", label: "History" },
   { id: "info", label: "Info" },
 ];
 
 export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
-  const [activeTab, setActiveTab] = useState<GitTab>("changes");
+  const activeTab = useWorkspaceStore((s) => s.gitPanelTab);
+  const setGitPanelTab = useWorkspaceStore((s) => s.setGitPanelTab);
   const [commitMessage, setCommitMessage] = useState("");
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
   const { push, isPushing } = useCommitAndPush(projectId);
+  const { pull, isPulling } = usePullFromGitHub(projectId);
 
   if (project === undefined) {
     return (
@@ -75,7 +80,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => setGitPanelTab(tab.id)}
             className={cn(
               "inline-flex h-6 items-center gap-1.5 rounded-t-sm px-2.5 text-[11px] font-medium transition-colors",
               activeTab === tab.id
@@ -99,6 +104,28 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
             <GitHubConnectionStatus className="text-[11px]" />
             {isGitHub ? (
               <>
+                <div className="flex gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={isPulling}
+                    onClick={() => void pull()}
+                    className="h-7 flex-1 border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
+                  >
+                    {isPulling ? (
+                      <>
+                        <Loader2Icon className="size-3.5 animate-spin" />
+                        Pulling…
+                      </>
+                    ) : (
+                      <>
+                        <DownloadIcon className="size-3.5" />
+                        Pull
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
@@ -154,7 +181,12 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           enabled={Boolean(isGitHub)}
         />
       ) : (
-        <GitInfoTab project={project} isGitHub={Boolean(isGitHub)} />
+        <GitInfoTab
+          project={project}
+          isGitHub={Boolean(isGitHub)}
+          onPull={() => void pull()}
+          isPulling={isPulling}
+        />
       )}
     </div>
   );
@@ -163,9 +195,13 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 function GitInfoTab({
   project,
   isGitHub,
+  onPull,
+  isPulling,
 }: {
   project: NonNullable<ReturnType<typeof useProject>>;
   isGitHub: boolean;
+  onPull: () => void;
+  isPulling: boolean;
 }) {
   return (
     <div className="flex-1 overflow-auto">
@@ -193,10 +229,30 @@ function GitInfoTab({
           {project.lastCommitSha ? (
             <GitInfoRow
               icon={<GitCommitIcon className="size-3.5" />}
-              label="Last push"
+              label="Last sync"
               value={project.lastCommitSha.slice(0, 7)}
             />
           ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isPulling}
+            onClick={onPull}
+            className="h-7 w-full border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
+          >
+            {isPulling ? (
+              <>
+                <Loader2Icon className="size-3.5 animate-spin" />
+                Pulling from GitHub…
+              </>
+            ) : (
+              <>
+                <DownloadIcon className="size-3.5" />
+                Pull / Sync Explorer
+              </>
+            )}
+          </Button>
           <div className="space-y-1">
             <p className="text-[10px] tracking-wide text-ws-text-muted uppercase">
               Repository
@@ -258,7 +314,7 @@ function GitInfoRow({
   label,
   value,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }) {

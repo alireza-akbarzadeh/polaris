@@ -5,9 +5,8 @@ import { GitBranchIcon, Loader2Icon } from "lucide-react";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import { getLanguageLabel } from "@/features/workspace/lib/editor-languages";
-import { runCommand } from "@/features/workspace/commands/registry";
+import { WorkspaceBranchPicker } from "@/features/workspace/components/workspace-branch-picker";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
-import { cn } from "@/lib/utils";
 
 type WorkspaceStatusBarProps = {
   projectId: string;
@@ -17,8 +16,9 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
-  const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
+  const branchPickerOpen = useWorkspaceStore((s) => s.branchPickerOpen);
+  const setBranchPickerOpen = useWorkspaceStore((s) => s.setBranchPickerOpen);
 
   const changeCount = changedFiles?.length ?? 0;
   const branch = project?.githubBranch ?? "main";
@@ -26,40 +26,24 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const isPushing = project?.exportStatus === "exporting";
   const language = getLanguageLabel(currentFilePath);
 
-  const openGitPanel = () => {
-    setLeftPanelView("git");
-    if (!useWorkspaceStore.getState().sidebarOpen) {
-      runCommand("toggleSidebar");
-    }
-  };
-
   return (
     <footer className="flex h-[22px] shrink-0 items-center justify-between border-t border-ws-border-subtle bg-ws-panel px-2 text-[11px] text-ws-text-muted">
       <div className="flex min-w-0 items-center gap-2">
         {isGitHub ? (
-          <button
-            type="button"
-            onClick={openGitPanel}
-            className={cn(
-              "inline-flex max-w-[220px] items-center gap-1.5 truncate rounded-sm px-1.5 py-0.5 transition-colors hover:bg-ws-hover hover:text-ws-text",
-              changeCount > 0 && "text-ws-text",
-            )}
-            title="Open Git panel"
-          >
-            {isPushing ? (
+          isPushing ? (
+            <span className="inline-flex max-w-[220px] items-center gap-1.5 truncate px-1.5 py-0.5">
               <Loader2Icon className="size-3 shrink-0 animate-spin" />
-            ) : (
-              <GitBranchIcon className="size-3 shrink-0" />
-            )}
-            <span className="truncate">{branch}</span>
-            {changeCount > 0 ? (
-              <span className="shrink-0 text-ws-success">
-                {changeCount} change{changeCount === 1 ? "" : "s"}
-              </span>
-            ) : (
-              <span className="shrink-0 text-ws-text-muted">✓ clean</span>
-            )}
-          </button>
+              <span className="truncate">{branch}</span>
+            </span>
+          ) : (
+            <WorkspaceBranchPicker
+              projectId={projectId}
+              branch={branch}
+              changeCount={changeCount}
+              open={branchPickerOpen}
+              onOpenChange={setBranchPickerOpen}
+            />
+          )
         ) : (
           <button
             type="button"

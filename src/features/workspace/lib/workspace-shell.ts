@@ -29,7 +29,10 @@ export type ShellResult = {
   cwd?: string;
 };
 
-const HELP_TEXT = `Available commands:
+const HELP_TEXT = `Polaris terminal is a simulated shell (not a real OS terminal).
+Node, pnpm, npm, and other system binaries are not available yet.
+
+Available commands:
   help                 Show this help message
   clear                Clear the terminal
   pwd                  Print working directory

@@ -29,7 +29,6 @@ import {
 } from "@/features/github/hooks/use-github-connection";
 import { GITHUB_REPO_SCOPE_MESSAGE } from "@/features/github/lib/github-scopes";
 import { useProject } from "@/features/projects/hooks/use-projects";
-import { runCommand } from "@/features/workspace/commands/registry";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
@@ -61,19 +60,12 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
   const { isConnected, hasRepoScope } = useGitHubConnection();
   const { connect, isConnecting } = useConnectGitHub();
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
-  const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const showGitPanel = useWorkspaceStore((s) => s.showGitPanel);
 
   const isGitHub = project?.source === "github" && Boolean(project.githubRepoUrl);
   const changeCount = changedFiles?.length ?? 0;
   const isPublishing = project?.exportStatus === "exporting";
   const hasPendingChanges = isGitHub && changeCount > 0;
-
-  const openGitPanel = () => {
-    setLeftPanelView("git");
-    if (!useWorkspaceStore.getState().sidebarOpen) {
-      runCommand("toggleSidebar");
-    }
-  };
 
   const onPublishToGitHub = () => {
     if (!isConnected || !hasRepoScope) {
@@ -159,7 +151,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
             {changeCount > 0 ? (
               <DropdownMenuItem
                 className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
-                onClick={openGitPanel}
+                onClick={() => showGitPanel("changes")}
               >
                 <UploadIcon className="size-3.5" />
                 Push {changeCount} change{changeCount === 1 ? "" : "s"}
@@ -175,10 +167,10 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
             )}
             <DropdownMenuItem
               className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
-              onClick={openGitPanel}
+              onClick={() => showGitPanel("changes")}
             >
               <GitBranchIcon className="size-3.5" />
-              Open Git panel
+              Open Git Changes
             </DropdownMenuItem>
             {project.githubRepoUrl ? (
               <DropdownMenuItem

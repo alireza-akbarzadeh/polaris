@@ -4,8 +4,7 @@ import { UserButton } from "@clerk/nextjs";
 import {
   PanelBottomIcon,
   PanelLeftIcon,
-  PanelRightIcon,
-  SettingsIcon,
+  PanelRightIcon
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -18,9 +17,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
-import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
+import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-menu";
+import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +57,7 @@ function ToolbarTooltipButton({
           className={cn(
             "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
             pressed &&
-              "bg-ws-hover text-ws-text after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-ws-accent",
+            "bg-ws-hover text-ws-text after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-ws-accent",
           )}
         >
           {children}
@@ -157,20 +157,8 @@ export function WorkspaceToolbar({
             className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-ws-border"
           />
 
+          <WorkspaceGitMenu projectId={projectId} />
           <WorkspacePublishMenu projectId={projectId} />
-
-          <ToolbarTooltipButton
-            label="Settings"
-            onClick={() => runCommand("openSettings")}
-            shortcut={
-              <>
-                <ModKey />
-                <ShortcutKey>,</ShortcutKey>
-              </>
-            }
-          >
-            <SettingsIcon className="size-3.5" strokeWidth={1.75} />
-          </ToolbarTooltipButton>
         </div>
 
         <Separator

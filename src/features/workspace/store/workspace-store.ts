@@ -8,6 +8,8 @@ export type PanelSizes = {
 
 export type LeftPanelView = "explorer" | "search" | "git";
 
+export type GitPanelTab = "changes" | "history" | "info";
+
 export type BreadcrumbSegment = {
   label: string;
   href?: string;
@@ -31,7 +33,9 @@ type WorkspaceState = WorkspacePrefs & {
   goToFileOpen: boolean;
   gitInitDialogOpen: boolean;
   cloneFromGitHubOpen: boolean;
+  branchPickerOpen: boolean;
   leftPanelView: LeftPanelView;
+  gitPanelTab: GitPanelTab;
   currentFilePath: string | null;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
@@ -52,7 +56,11 @@ type WorkspaceState = WorkspacePrefs & {
   closeGitInitDialog: () => void;
   openCloneFromGitHub: () => void;
   closeCloneFromGitHub: () => void;
+  openBranchPicker: () => void;
+  setBranchPickerOpen: (open: boolean) => void;
   setLeftPanelView: (view: LeftPanelView) => void;
+  setGitPanelTab: (tab: GitPanelTab) => void;
+  showGitPanel: (tab?: GitPanelTab) => void;
   setCurrentFilePath: (path: string | null) => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
@@ -92,7 +100,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   goToFileOpen: false,
   gitInitDialogOpen: false,
   cloneFromGitHubOpen: false,
+  branchPickerOpen: false,
   leftPanelView: "explorer",
+  gitPanelTab: "changes",
   currentFilePath: null,
   hydrated: false,
   breadcrumb: [
@@ -117,8 +127,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeGitInitDialog: () => set({ gitInitDialogOpen: false }),
   openCloneFromGitHub: () => set({ cloneFromGitHubOpen: true }),
   closeCloneFromGitHub: () => set({ cloneFromGitHubOpen: false }),
+  openBranchPicker: () => set({ branchPickerOpen: true }),
+  setBranchPickerOpen: (open) => set({ branchPickerOpen: open }),
   setLeftPanelView: (view) =>
     set({ leftPanelView: view, sidebarOpen: true }),
+  setGitPanelTab: (tab) => set({ gitPanelTab: tab }),
+  showGitPanel: (tab) =>
+    set({
+      leftPanelView: "git",
+      sidebarOpen: true,
+      ...(tab ? { gitPanelTab: tab } : {}),
+    }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
   setPanelSizes: (sizes) =>
     set((s) => ({

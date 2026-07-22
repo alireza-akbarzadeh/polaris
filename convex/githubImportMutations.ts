@@ -1,44 +1,7 @@
 import { v } from "convex/values";
 
-import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
-import { buildFileTree } from "./lib/github";
-
-type TreeNode = {
-  name: string;
-  path: string;
-  kind: "file" | "folder";
-  content?: string;
-  children: Map<string, TreeNode>;
-};
-
-async function insertTreeNode(
-  ctx: MutationCtx,
-  projectId: Id<"projects">,
-  node: TreeNode,
-  parentId?: Id<"projectFiles">,
-) {
-  const now = Date.now();
-  const content = node.kind === "file" ? (node.content ?? "") : undefined;
-  const fileId = await ctx.db.insert("projectFiles", {
-    projectId,
-    name: node.name,
-    parentId,
-    kind: node.kind,
-    content,
-    syncedContent: node.kind === "file" ? content : undefined,
-    staged: false,
-    path: node.path,
-    updatedAt: now,
-  });
-
-  if (node.kind === "folder") {
-    for (const child of node.children.values()) {
-      await insertTreeNode(ctx, projectId, child, fileId);
-    }
-  }
-}
+import { insertImportedFiles } from "./lib/importProjectFiles";
 
 export const createImportProject = internalMutation({
   args: {
@@ -71,10 +34,7 @@ export const importFiles = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
-    const tree = buildFileTree(args.files);
-    for (const child of tree.children.values()) {
-      await insertTreeNode(ctx, args.projectId, child);
-    }
+    await insertImportedFiles(ctx, args.projectId, args.files);
   },
 });
 

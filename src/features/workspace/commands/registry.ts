@@ -1,5 +1,6 @@
 import {
   useWorkspaceStore,
+  type GitPanelTab,
   type LeftPanelView,
 } from "@/features/workspace/store/workspace-store";
 
@@ -16,6 +17,8 @@ export type CommandId =
   | "showExplorer"
   | "showSearch"
   | "showGit"
+  | "showGitChanges"
+  | "showGitHistory"
   | "findInFiles";
 
 export type Command = {
@@ -36,6 +39,10 @@ function showPanel(view: LeftPanelView) {
   } else {
     s.setLeftPanelView(view);
   }
+}
+
+function showGitTab(tab: GitPanelTab) {
+  store().showGitPanel(tab);
 }
 
 export const workspaceCommands: Command[] = [
@@ -113,6 +120,18 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+9",
     allowInInput: true,
     run: () => showPanel("git"),
+  },
+  {
+    id: "showGitChanges",
+    shortcut: "mod+shift+g",
+    allowInInput: true,
+    run: () => showGitTab("changes"),
+  },
+  {
+    id: "showGitHistory",
+    shortcut: "mod+shift+h",
+    allowInInput: true,
+    run: () => showGitTab("history"),
   },
   {
     id: "findInFiles",

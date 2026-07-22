@@ -23,11 +23,14 @@ type WorkspaceTerminalProps = {
   projectId: string;
 };
 
+/** JetBrains-like dark — matches --ws-* dark tokens */
 const TERMINAL_THEME_DARK: ITheme = {
   background: "#1e1f22",
   foreground: "#bcbec4",
-  cursor: "#bcbec4",
-  selectionBackground: "#3c3f41",
+  cursor: "#dfdfdf",
+  cursorAccent: "#1e1f22",
+  selectionBackground: "#214283",
+  selectionForeground: "#dfdfdf",
   black: "#1e1f22",
   red: "#ff6b68",
   green: "#6aab73",
@@ -37,27 +40,30 @@ const TERMINAL_THEME_DARK: ITheme = {
   cyan: "#299999",
   white: "#bcbec4",
   brightBlack: "#6f737a",
-  brightRed: "#ff6b68",
-  brightGreen: "#6aab73",
-  brightYellow: "#bbb529",
-  brightBlue: "#589df6",
-  brightMagenta: "#c77dbb",
-  brightCyan: "#299999",
+  brightRed: "#ff8785",
+  brightGreen: "#89c185",
+  brightYellow: "#d5c264",
+  brightBlue: "#7eb0f8",
+  brightMagenta: "#d89bcb",
+  brightCyan: "#3fbdbd",
   brightWhite: "#dfdfdf",
 };
 
+/** JetBrains-like light — matches --ws-* light tokens (panel, not pure white) */
 const TERMINAL_THEME_LIGHT: ITheme = {
-  background: "#ffffff",
+  background: "#f2f3f5",
   foreground: "#2b2d30",
   cursor: "#2b2d30",
-  selectionBackground: "#dfe1e5",
-  black: "#2b2d30",
-  red: "#db3b3b",
-  green: "#548a3d",
-  yellow: "#9a7b0a",
-  blue: "#2470c0",
-  magenta: "#9b59b6",
-  cyan: "#1a7a7a",
+  cursorAccent: "#f2f3f5",
+  selectionBackground: "#b3d7ff",
+  selectionForeground: "#2b2d30",
+  black: "#000000",
+  red: "#c72222",
+  green: "#3f6e2a",
+  yellow: "#7a6208",
+  blue: "#1759a5",
+  magenta: "#7a3f9a",
+  cyan: "#0f5f5f",
   white: "#5a5d63",
   brightBlack: "#6c707e",
   brightRed: "#db3b3b",
@@ -105,9 +111,17 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   filesRef.current = files;
   changedFilesRef.current = changedFiles;
 
+  const isDarkRef = useRef(isDark);
+  isDarkRef.current = isDark;
+
   const writePrompt = useCallback((term: Terminal) => {
     const projectName = projectRef.current?.name ?? "project";
-    term.write(`\r\n\x1b[32m${projectName}\x1b[0m:\x1b[34m${cwdRef.current}\x1b[0m $ `);
+    // Bright green/blue read better on light panels than dim ANSI 32/34.
+    const nameColor = isDarkRef.current ? "\x1b[32m" : "\x1b[92m";
+    const pathColor = isDarkRef.current ? "\x1b[34m" : "\x1b[94m";
+    term.write(
+      `\r\n${nameColor}${projectName}\x1b[0m:${pathColor}${cwdRef.current}\x1b[0m $ `,
+    );
   }, []);
 
   useEffect(() => {
@@ -190,11 +204,12 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: "Consolas, 'Courier New', monospace",
-      fontSize: 12,
-      lineHeight: 1.2,
-      theme: TERMINAL_THEME_DARK,
+      fontFamily: "Dank Mono, Consolas, 'Courier New', monospace",
+      fontSize: 13,
+      lineHeight: 1.35,
+      theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,
       scrollback: 2000,
+      allowTransparency: false,
     });
 
     const fitAddon = new FitAddon();
@@ -205,8 +220,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     terminalRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    term.writeln("Polaris workspace terminal");
-    term.writeln("Type 'help' for available commands.");
+    term.writeln("Polaris workspace terminal (simulated shell)");
+    term.writeln("Type 'help' for available commands. Node/pnpm are not available yet.");
     writePrompt(term);
 
     term.onData((data) => {
@@ -294,13 +309,19 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   }, [terminalTheme]);
 
   return (
-    <div className="flex h-full flex-col border-t border-ws-border-subtle bg-ws-bg">
-      <div className="flex h-7 shrink-0 items-center border-b border-ws-border-subtle px-3">
+    <div className="flex h-full flex-col border-t border-ws-border-subtle bg-ws-panel">
+      <div className="flex h-7 shrink-0 items-center border-b border-ws-border-subtle bg-ws-panel px-3">
         <p className="text-[11px] font-semibold tracking-wide text-ws-text">
           Terminal
         </p>
+        <p className="ml-2 text-[10px] text-ws-text-muted">
+          Simulated · node/pnpm coming later
+        </p>
       </div>
-      <div ref={containerRef} className="min-h-0 flex-1 p-1" />
+      <div
+        ref={containerRef}
+        className="min-h-0 flex-1 overflow-hidden bg-ws-panel p-2 [&_.xterm]:h-full [&_.xterm-viewport]:!bg-transparent [&_.xterm-screen]:h-full"
+      />
     </div>
   );
 }
