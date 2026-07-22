@@ -57,7 +57,7 @@ export function WorkspaceChangeList({
 
   if (project === undefined || changedFiles === undefined) {
     return (
-      <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-[#787878]">
+      <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-ws-text-muted">
         <Loader2Icon className="size-3.5 animate-spin" />
         Loading changes…
       </div>
@@ -66,7 +66,7 @@ export function WorkspaceChangeList({
 
   if (!project.syncedAt) {
     return (
-      <p className="px-3 py-4 text-[11px] leading-relaxed text-[#787878]">
+      <p className="px-3 py-4 text-[11px] leading-relaxed text-ws-text-muted">
         Change tracking is not available for this project yet. Re-import from
         GitHub or create a new project to enable the change list.
       </p>
@@ -75,7 +75,7 @@ export function WorkspaceChangeList({
 
   if (changedFiles.length === 0) {
     return (
-      <p className="px-3 py-4 text-[11px] text-[#787878]">{emptyMessage}</p>
+      <p className="px-3 py-4 text-[11px] text-ws-text-muted">{emptyMessage}</p>
     );
   }
 
@@ -129,7 +129,7 @@ export function WorkspaceChangeList({
         }
       >
         {staged.length === 0 ? (
-          <p className="px-2 py-1.5 text-[11px] text-[#6f737a]">
+          <p className="px-2 py-1.5 text-[11px] text-ws-text-muted">
             No staged changes
           </p>
         ) : (
@@ -174,7 +174,7 @@ export function WorkspaceChangeList({
         }
       >
         {unstaged.length === 0 ? (
-          <p className="px-2 py-1.5 text-[11px] text-[#6f737a]">
+          <p className="px-2 py-1.5 text-[11px] text-ws-text-muted">
             No unstaged changes
           </p>
         ) : (
@@ -234,7 +234,7 @@ function ChangeSection({
         <button
           type="button"
           onClick={onToggle}
-          className="inline-flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left text-[11px] font-medium text-[#9a9a9a] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+          className="inline-flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left text-[11px] font-medium text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
           {open ? (
             <ChevronDownIcon className="size-3 shrink-0" />
@@ -242,7 +242,7 @@ function ChangeSection({
             <ChevronRightIcon className="size-3 shrink-0" />
           )}
           <span className="truncate">{title}</span>
-          <span className="ml-auto tabular-nums text-[#6f737a]">{count}</span>
+          <span className="ml-auto tabular-nums text-ws-text-muted">{count}</span>
         </button>
         {onAction && actionLabel ? (
           <Button
@@ -252,7 +252,7 @@ function ChangeSection({
             title={actionLabel}
             aria-label={actionLabel}
             onClick={onAction}
-            className="size-5 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           >
             {actionLabel.startsWith("Stage") ? (
               <PlusIcon className="size-3" />
@@ -288,15 +288,15 @@ function ChangeRow({
 }) {
   const href = `/projects/${projectId}/files/${file.path}`;
   const marker = file.isNew ? "A" : "M";
-  const markerColor = file.isNew ? "text-[#589df6]" : "text-[#6a8759]";
+  const markerColor = file.isNew ? "text-ws-link" : "text-ws-success";
 
   return (
     <li
       className={cn(
         "group flex items-center gap-0.5 rounded-sm pr-1 pl-1.5 text-[12px]",
         active
-          ? "bg-[#3c3f41] text-[#dfdfdf]"
-          : "text-[#9a9a9a] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
+          ? "bg-ws-hover text-ws-text"
+          : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
       )}
     >
       <Link
@@ -315,7 +315,7 @@ function ChangeRow({
       {interactive ? (
         <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           {busy ? (
-            <Loader2Icon className="size-3.5 animate-spin text-[#787878]" />
+            <Loader2Icon className="size-3.5 animate-spin text-ws-text-muted" />
           ) : (
             <>
               {onStage ? (
@@ -326,7 +326,7 @@ function ChangeRow({
                   title="Stage"
                   aria-label={`Stage ${file.path}`}
                   onClick={onStage}
-                  className="size-5 rounded-sm text-[#afb1b3] hover:bg-[#2b2d30] hover:text-[#dfdfdf]"
+                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
                 >
                   <PlusIcon className="size-3" />
                 </Button>
@@ -339,7 +339,7 @@ function ChangeRow({
                   title="Unstage"
                   aria-label={`Unstage ${file.path}`}
                   onClick={onUnstage}
-                  className="size-5 rounded-sm text-[#afb1b3] hover:bg-[#2b2d30] hover:text-[#dfdfdf]"
+                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
                 >
                   <MinusIcon className="size-3" />
                 </Button>
@@ -352,7 +352,7 @@ function ChangeRow({
                   title="Discard Changes"
                   aria-label={`Discard changes to ${file.path}`}
                   onClick={onDiscard}
-                  className="size-5 rounded-sm text-[#afb1b3] hover:bg-[#2b2d30] hover:text-[#ff8a85]"
+                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-danger-soft"
                 >
                   <Undo2Icon className="size-3" />
                 </Button>

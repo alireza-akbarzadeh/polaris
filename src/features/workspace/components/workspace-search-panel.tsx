@@ -36,7 +36,7 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
 
   if (files === undefined) {
     return (
-      <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-[#787878]">
+      <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-ws-text-muted">
         <Loader2Icon className="size-3.5 animate-spin" />
         Loading…
       </div>
@@ -45,23 +45,23 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="space-y-2 border-b border-[#1e1f22] p-2">
+      <div className="space-y-2 border-b border-ws-border-subtle p-2">
         <div className="relative">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-[#6f737a]" />
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-ws-text-muted" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search in project files…"
-            className="h-7 border-[#4e5155] bg-[#3c3f41] pl-7 text-[12px] text-[#dfdfdf] placeholder:text-[#6f737a] focus-visible:border-[#3574f0] focus-visible:ring-0"
+            className="h-7 border-ws-border bg-ws-hover pl-7 text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:border-ws-accent focus-visible:ring-0"
             autoFocus
           />
         </div>
-        <label className="flex cursor-pointer items-center gap-1.5 px-0.5 text-[11px] text-[#9a9a9a]">
+        <label className="flex cursor-pointer items-center gap-1.5 px-0.5 text-[11px] text-ws-text-muted">
           <input
             type="checkbox"
             checked={caseSensitive}
             onChange={(e) => setCaseSensitive(e.target.checked)}
-            className="size-3 rounded border-[#5a5d63] accent-[#3574f0]"
+            className="size-3 rounded border-ws-border-strong accent-ws-accent"
           />
           Match case
         </label>
@@ -69,16 +69,16 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
 
       <div className="flex-1 overflow-auto p-1">
         {!query.trim() ? (
-          <p className="px-2 py-3 text-[11px] text-[#787878]">
+          <p className="px-2 py-3 text-[11px] text-ws-text-muted">
             Type to search across all project files
           </p>
         ) : matches.length === 0 ? (
-          <p className="px-2 py-3 text-[11px] text-[#787878]">
+          <p className="px-2 py-3 text-[11px] text-ws-text-muted">
             No matches found
           </p>
         ) : (
           <div className="space-y-2">
-            <p className="px-2 text-[10px] text-[#6f737a]">
+            <p className="px-2 text-[10px] text-ws-text-muted">
               {matches.length} {matches.length === 1 ? "match" : "matches"} in{" "}
               {grouped.size} {grouped.size === 1 ? "file" : "files"}
             </p>
@@ -86,7 +86,7 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
               <div key={path}>
                 <Link
                   href={`/projects/${projectId}/files/${path}`}
-                  className="block truncate px-2 py-0.5 text-[11px] font-medium text-[#bcbec4] hover:text-[#dfdfdf]"
+                  className="block truncate px-2 py-0.5 text-[11px] font-medium text-ws-text-secondary hover:text-ws-text"
                 >
                   {path}
                 </Link>
@@ -97,13 +97,13 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
                         type="button"
                         onClick={() => onSelectMatch(match)}
                         className={cn(
-                          "flex w-full items-start gap-2 rounded-sm px-2 py-0.5 text-left text-[11px] hover:bg-[#3c3f41]",
+                          "flex w-full items-start gap-2 rounded-sm px-2 py-0.5 text-left text-[11px] hover:bg-ws-hover",
                         )}
                       >
-                        <span className="w-6 shrink-0 text-right font-mono text-[#6f737a]">
+                        <span className="w-6 shrink-0 text-right font-mono text-ws-text-muted">
                           {match.line}
                         </span>
-                        <span className="min-w-0 flex-1 truncate font-mono text-[#9a9a9a]">
+                        <span className="min-w-0 flex-1 truncate font-mono text-ws-text-muted">
                           {highlightMatch(match)}
                         </span>
                       </button>
@@ -137,7 +137,7 @@ function highlightMatch(match: SearchMatch) {
   return (
     <>
       {before}
-      <mark className="bg-[#5c4b1f] text-[#dfdfdf]">{hit}</mark>
+      <mark className="bg-ws-mark text-ws-text">{hit}</mark>
       {after}
     </>
   );

@@ -22,7 +22,7 @@ export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProp
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-7 shrink-0 items-end gap-px border-b border-[#1e1f22] bg-[#2b2d30] px-1">
+      <div className="flex h-7 shrink-0 items-end gap-px border-b border-ws-border-subtle bg-ws-panel px-1">
         {EXPLORER_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -31,8 +31,8 @@ export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProp
             className={cn(
               "inline-flex h-6 items-center rounded-t-sm px-2.5 text-[11px] font-medium transition-colors",
               activeTab === tab.id
-                ? "bg-[#1e1f22] text-[#dfdfdf]"
-                : "text-[#9a9a9a] hover:text-[#dfdfdf]",
+                ? "bg-ws-bg text-ws-text"
+                : "text-ws-text-muted hover:text-ws-text",
             )}
           >
             {tab.label}

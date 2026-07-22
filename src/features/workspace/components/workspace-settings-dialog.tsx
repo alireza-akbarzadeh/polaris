@@ -9,6 +9,7 @@ import {
   SearchIcon,
   SettingsIcon,
 } from "lucide-react";
+import Image from "next/image";
 
 import {
   CommandDialog,
@@ -26,6 +27,7 @@ import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 export function WorkspaceSettingsDialog() {
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const closeSettings = useWorkspaceStore((s) => s.closeSettings);
+  const openCloneFromGitHub = useWorkspaceStore((s) => s.openCloneFromGitHub);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
@@ -47,6 +49,39 @@ export function WorkspaceSettingsDialog() {
       <CommandInput placeholder="Search settings…" />
       <CommandList className="max-h-[min(56vh,420px)]">
         <CommandEmpty>No settings found.</CommandEmpty>
+
+        <CommandGroup heading="GitHub">
+          <CommandItem
+            value="clone from github import repository"
+            onSelect={() => {
+              closeSettings();
+              openCloneFromGitHub();
+            }}
+          >
+            <Image
+              src="/images/github.png"
+              alt=""
+              width={16}
+              height={16}
+              className="size-4 dark:invert"
+            />
+            <span>Clone from GitHub</span>
+            <CommandShortcut>⌘I</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="show git panel source control"
+            onSelect={() => {
+              runCommand("showGit");
+              closeSettings();
+            }}
+          >
+            <GitBranchIcon />
+            <span>Show Git</span>
+            <CommandShortcut>⌘9</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
 
         <CommandGroup heading="Layout">
           <CommandItem
@@ -108,17 +143,6 @@ export function WorkspaceSettingsDialog() {
             <SearchIcon />
             <span>Find in Files</span>
             <CommandShortcut>⌘⇧F</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            value="show git panel"
-            onSelect={() => {
-              runCommand("showGit");
-              closeSettings();
-            }}
-          >
-            <GitBranchIcon />
-            <span>Show Git</span>
-            <CommandShortcut>⌘9</CommandShortcut>
           </CommandItem>
           <CommandItem
             value="show project explorer"

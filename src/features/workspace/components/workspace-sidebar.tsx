@@ -20,8 +20,8 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
     <div className="flex h-full">
       <WorkspaceActivityBar />
       <aside className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-7 items-center border-b border-[#1e1f22] px-3">
-          <p className="text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
+        <div className="flex h-7 items-center border-b border-ws-border-subtle px-3">
+          <p className="text-[11px] font-semibold tracking-wide text-ws-text">
             {LEFT_PANEL_LABELS[leftPanelView]}
           </p>
         </div>

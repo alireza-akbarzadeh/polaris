@@ -194,7 +194,7 @@ function MentionPicker({
   if (!open) return null;
 
   return (
-    <div className="absolute right-2 bottom-full left-2 z-20 mb-1 overflow-hidden rounded-lg border border-[#4e5155] bg-[#2b2d30] shadow-lg">
+    <div className="absolute right-2 bottom-full left-2 z-20 mb-1 overflow-hidden rounded-lg border border-ws-border bg-ws-panel shadow-lg">
       <PromptInputCommand>
         <PromptInputCommandInput placeholder="Mention a file…" />
         <PromptInputCommandList>
@@ -206,7 +206,7 @@ function MentionPicker({
                 value={file.path}
                 onSelect={() => insertMention(file.path, file.name, file.content)}
               >
-                <FileTextIcon className="size-3.5 text-[#6a9bf5]" />
+                <FileTextIcon className="size-3.5 text-ws-accent-soft" />
                 <span className="truncate">{file.path}</span>
               </PromptInputCommandItem>
             ))}
@@ -296,7 +296,7 @@ function PromptInputFields({
           value={controller.textInput.value}
           onChange={(event) => handleTextChange(event.target.value)}
           placeholder={`Ask about ${projectName ?? "this project"}… (@ file, attach images)`}
-          className="min-h-14 text-[13px] text-[#dfdfdf] placeholder:text-[#787878]"
+          className="min-h-14 text-[13px] text-ws-text placeholder:text-ws-text-muted"
           disabled={disabled || isBusy}
         />
       </PromptInputBody>
@@ -305,10 +305,10 @@ function PromptInputFields({
         <PromptInputTools>
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger
-              className="size-7 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+              className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
               tooltip="Add attachments"
             />
-            <PromptInputActionMenuContent className="border-[#4e5155] bg-[#2b2d30]">
+            <PromptInputActionMenuContent className="border-ws-border bg-ws-panel">
               <PromptInputActionAddAttachments label="Upload files or images" />
               <PromptInputActionMenuItem
                 onSelect={(event) => {
@@ -334,7 +334,7 @@ function PromptInputFields({
 
           <PromptInputButton
             type="button"
-            className="size-7 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
             tooltip="Mention file"
             onClick={() => {
               const next = controller.textInput.value.endsWith("@")
@@ -349,7 +349,7 @@ function PromptInputFields({
 
           <PromptInputButton
             type="button"
-            className="size-7 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
             tooltip="Insert code fence"
             onClick={insertCodeFence}
           >
@@ -360,7 +360,7 @@ function PromptInputFields({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="size-7 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
             onTranscriptionChange={(text) => {
               const current = controller.textInput.value;
               const spacer = current && !current.endsWith(" ") ? " " : "";
@@ -379,7 +379,7 @@ function PromptInputFields({
         <PromptInputSubmit
           status={status}
           onStop={onStop}
-          className="size-7 rounded-lg bg-[#3574f0] text-white hover:bg-[#2d66d8] disabled:opacity-40"
+          className="size-7 rounded-lg bg-ws-accent text-white hover:bg-ws-accent-hover disabled:opacity-40"
           disabled={(!canSubmit && !isBusy) || disabled}
         />
       </PromptInputFooter>
@@ -469,7 +469,7 @@ function PromptInputShell({
       accept="image/*,text/*,.ts,.tsx,.js,.jsx,.json,.md,.css,.html"
       multiple
       maxFiles={8}
-      className="relative rounded-xl border-[#4e5155] bg-[#1e1f22] shadow-none **:data-[slot=input-group]:border-[#4e5155] **:data-[slot=input-group]:bg-[#1e1f22]"
+      className="relative rounded-xl border-ws-border bg-ws-bg shadow-none **:data-[slot=input-group]:border-ws-border **:data-[slot=input-group]:bg-ws-bg"
     >
       <ReferencedSourcesBridge referencedRef={referencedRef} />
       <PendingChatAttachBridge

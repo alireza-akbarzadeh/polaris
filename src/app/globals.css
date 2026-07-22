@@ -38,6 +38,31 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-ws-bg: var(--ws-bg);
+  --color-ws-panel: var(--ws-panel);
+  --color-ws-hover: var(--ws-hover);
+  --color-ws-hover-deep: var(--ws-hover-deep);
+  --color-ws-border: var(--ws-border);
+  --color-ws-border-subtle: var(--ws-border-subtle);
+  --color-ws-border-strong: var(--ws-border-strong);
+  --color-ws-text: var(--ws-text);
+  --color-ws-text-secondary: var(--ws-text-secondary);
+  --color-ws-text-muted: var(--ws-text-muted);
+  --color-ws-accent: var(--ws-accent);
+  --color-ws-accent-hover: var(--ws-accent-hover);
+  --color-ws-accent-soft: var(--ws-accent-soft);
+  --color-ws-link: var(--ws-link);
+  --color-ws-success: var(--ws-success);
+  --color-ws-danger: var(--ws-danger);
+  --color-ws-danger-soft: var(--ws-danger-soft);
+  --color-ws-danger-bg: var(--ws-danger-bg);
+  --color-ws-danger-bg-hover: var(--ws-danger-bg-hover);
+  --color-ws-mark: var(--ws-mark);
+  --color-ws-menu-focus: var(--ws-menu-focus);
+  --color-ws-danger-focus: var(--ws-danger-focus);
+  --color-ws-purple: var(--ws-purple);
+  --color-ws-warning: var(--ws-warning);
+  --color-ws-danger-surface: var(--ws-danger-surface);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -78,6 +103,33 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Workspace IDE chrome (JetBrains-like light) */
+  --ws-bg: #ffffff;
+  --ws-panel: #f2f3f5;
+  --ws-hover: #dfe1e5;
+  --ws-hover-deep: #cfd1d5;
+  --ws-border: #d3d5db;
+  --ws-border-subtle: #e5e7eb;
+  --ws-border-strong: #c4c6cc;
+  --ws-text: #2b2d30;
+  --ws-text-secondary: #5a5d63;
+  --ws-text-muted: #6c707e;
+  --ws-accent: #3574f0;
+  --ws-accent-hover: #2d66d8;
+  --ws-accent-soft: #3574f0;
+  --ws-link: #2470c0;
+  --ws-success: #548a3d;
+  --ws-danger: #db3b3b;
+  --ws-danger-soft: #c72222;
+  --ws-danger-bg: #c42b1c;
+  --ws-danger-bg-hover: #a82418;
+  --ws-mark: #fff2c0;
+  --ws-menu-focus: #3574f0;
+  --ws-danger-focus: #f5d0ce;
+  --ws-purple: #7c5cff;
+  --ws-warning: #9a7b0a;
+  --ws-danger-surface: #fde8e8;
 }
 
 .dark {
@@ -113,6 +165,33 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Workspace IDE chrome (JetBrains New UI dark) */
+  --ws-bg: #1e1f22;
+  --ws-panel: #2b2d30;
+  --ws-hover: #3c3f41;
+  --ws-hover-deep: #45484c;
+  --ws-border: #4e5155;
+  --ws-border-subtle: #1e1f22;
+  --ws-border-strong: #5a5d63;
+  --ws-text: #dfdfdf;
+  --ws-text-secondary: #bcbec4;
+  --ws-text-muted: #9a9a9a;
+  --ws-accent: #3574f0;
+  --ws-accent-hover: #2d66d8;
+  --ws-accent-soft: #6a9bf5;
+  --ws-link: #589df6;
+  --ws-success: #6a8759;
+  --ws-danger: #ff6b68;
+  --ws-danger-soft: #ff8a85;
+  --ws-danger-bg: #c42b1c;
+  --ws-danger-bg-hover: #a82418;
+  --ws-mark: #5c4b1f;
+  --ws-menu-focus: #064eb3;
+  --ws-danger-focus: #5c2b29;
+  --ws-purple: #7c5cff;
+  --ws-warning: #c9a227;
+  --ws-danger-surface: #3a2323;
 }
 
 @layer base {

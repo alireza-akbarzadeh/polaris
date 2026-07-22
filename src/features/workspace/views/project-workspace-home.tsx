@@ -22,18 +22,18 @@ export function ProjectWorkspaceHome({ projectId }: ProjectWorkspaceHomeProps) {
       <div className="flex items-center gap-3">
         <Image src="/logo.svg" alt="" width={28} height={28} className="size-7" />
         <div>
-          <p className="text-[15px] font-medium text-[#dfdfdf]">
+          <p className="text-[15px] font-medium text-ws-text">
             {project?.name ?? "Your workspace"}
           </p>
-          <p className="text-[12px] text-[#787878]">
+          <p className="text-[12px] text-ws-text-muted">
             Click the logo in the header to rename or switch workspaces
           </p>
         </div>
       </div>
 
-      <p className="mt-8 max-w-lg text-[13px] leading-relaxed text-[#9a9a9a]">
+      <p className="mt-8 max-w-lg text-[13px] leading-relaxed text-ws-text-muted">
         Open a file from the project tree on the left, or add nested routes under{" "}
-        <code className="rounded bg-[#2b2d30] px-1.5 py-0.5 font-mono text-[12px] text-[#bcbec4]">
+        <code className="rounded bg-ws-panel px-1.5 py-0.5 font-mono text-[12px] text-ws-text-secondary">
           /projects/{projectId}/
         </code>
         . Use Polaris AI on the right for code help and planning.

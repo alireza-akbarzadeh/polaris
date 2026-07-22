@@ -34,15 +34,15 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   };
 
   return (
-    <footer className="flex h-[22px] shrink-0 items-center justify-between border-t border-[#1e1f22] bg-[#2b2d30] px-2 text-[11px] text-[#9a9a9a]">
+    <footer className="flex h-[22px] shrink-0 items-center justify-between border-t border-ws-border-subtle bg-ws-panel px-2 text-[11px] text-ws-text-muted">
       <div className="flex min-w-0 items-center gap-2">
         {isGitHub ? (
           <button
             type="button"
             onClick={openGitPanel}
             className={cn(
-              "inline-flex max-w-[220px] items-center gap-1.5 truncate rounded-sm px-1.5 py-0.5 transition-colors hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
-              changeCount > 0 && "text-[#dfdfdf]",
+              "inline-flex max-w-[220px] items-center gap-1.5 truncate rounded-sm px-1.5 py-0.5 transition-colors hover:bg-ws-hover hover:text-ws-text",
+              changeCount > 0 && "text-ws-text",
             )}
             title="Open Git panel"
           >
@@ -53,18 +53,18 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             )}
             <span className="truncate">{branch}</span>
             {changeCount > 0 ? (
-              <span className="shrink-0 text-[#6a8759]">
+              <span className="shrink-0 text-ws-success">
                 {changeCount} change{changeCount === 1 ? "" : "s"}
               </span>
             ) : (
-              <span className="shrink-0 text-[#6f737a]">✓ clean</span>
+              <span className="shrink-0 text-ws-text-muted">✓ clean</span>
             )}
           </button>
         ) : (
           <button
             type="button"
             onClick={openGitInitDialog}
-            className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-[#9a9a9a] transition-colors hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-ws-text-muted transition-colors hover:bg-ws-hover hover:text-ws-text"
             title="Initialize Git repository"
           >
             <GitBranchIcon className="size-3 shrink-0" />
@@ -82,7 +82,7 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             {currentFilePath}
           </span>
         ) : null}
-        <span className="shrink-0 px-1.5 text-[#bcbec4]">{language}</span>
+        <span className="shrink-0 px-1.5 text-ws-text-secondary">{language}</span>
         <span className="hidden shrink-0 sm:inline">UTF-8</span>
         <span className="hidden shrink-0 sm:inline">Spaces: 2</span>
       </div>

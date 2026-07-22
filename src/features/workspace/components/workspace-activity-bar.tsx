@@ -64,10 +64,10 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
 ];
 
 const buttonClassName =
-  "relative size-7 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]";
+  "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text";
 
 const activeClassName =
-  "bg-[#3c3f41] text-[#dfdfdf] before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[#3574f0]";
+  "bg-ws-hover text-ws-text before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-ws-accent";
 
 function ActivityBarButton({
   label,
@@ -100,11 +100,11 @@ function ActivityBarButton({
       <TooltipContent
         side="right"
         sideOffset={6}
-        className="flex items-center gap-2 border border-[#5a5d63] bg-[#3c3f41] px-2 py-1 text-[#dfdfdf] [&_svg]:hidden"
+        className="flex items-center gap-2 border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
       >
         <span className="text-xs">{label}</span>
         {shortcut ? (
-          <span className="text-[10px] text-[#9a9a9a]">{shortcut}</span>
+          <span className="text-[10px] text-ws-text-muted">{shortcut}</span>
         ) : null}
       </TooltipContent>
     </Tooltip>
@@ -167,7 +167,7 @@ export function WorkspaceActivityBar() {
     <TooltipProvider delayDuration={300}>
       <nav
         aria-label="Tool windows"
-        className="flex h-full w-9 shrink-0 flex-col items-center justify-between border-r border-[#1e1f22] bg-[#2b2d30] py-1.5"
+        className="flex h-full w-9 shrink-0 flex-col items-center justify-between border-r border-ws-border-subtle bg-ws-panel py-1.5"
       >
         <div className="flex flex-col items-center gap-0.5">
           {ACTIVITY_ITEMS.map((item) => {

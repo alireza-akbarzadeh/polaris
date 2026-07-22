@@ -52,14 +52,14 @@ export function WorkspaceGoToFileDialog({
       title="Go to File"
       description="Search and open a file in this project"
       showCloseButton={false}
-      className="top-[18%] translate-y-0 border-[#4e5155] bg-[#2b2d30] sm:max-w-lg [&_[cmdk-group-heading]]:text-[#6f737a] [&_[cmdk-input]]:text-[#dfdfdf]"
+      className="top-[18%] translate-y-0 border-ws-border bg-ws-panel sm:max-w-lg [&_[cmdk-group-heading]]:text-ws-text-muted [&_[cmdk-input]]:text-ws-text"
     >
       <CommandInput
         placeholder="Search files by name…"
         className="text-[13px]"
       />
       <CommandList className="max-h-[min(56vh,420px)]">
-        <CommandEmpty className="py-6 text-[12px] text-[#787878]">
+        <CommandEmpty className="py-6 text-[12px] text-ws-text-muted">
           No files found.
         </CommandEmpty>
         <CommandGroup heading="Files">
@@ -68,7 +68,7 @@ export function WorkspaceGoToFileDialog({
               key={path}
               value={`${path} ${path.replace(/\//g, " ")}`}
               onSelect={() => onSelect(path)}
-              className="gap-2 py-2 text-[#bcbec4] data-[selected=true]:bg-[#3c3f41] data-[selected=true]:text-[#dfdfdf]"
+              className="gap-2 py-2 text-ws-text-secondary data-[selected=true]:bg-ws-hover data-[selected=true]:text-ws-text"
             >
               <span className="size-4 shrink-0 [&_svg]:size-full">
                 <FileIcon

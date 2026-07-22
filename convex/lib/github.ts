@@ -173,11 +173,31 @@ function isRetryableGitHubError(error: unknown): boolean {
   );
 }
 
+export async function waitForRepositoryBranch(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  branch: string,
+  maxAttempts = 20,
+) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (await repositoryHasBranch(octokit, owner, repo, branch)) {
+      return;
+    }
+    await sleep(Math.min(2000, 400 * (attempt + 1)));
+  }
+
+  throw new Error(
+    "GitHub is still preparing your repository. Wait a few seconds and try again.",
+  );
+}
+
+/** @deprecated Prefer waitForRepositoryBranch after auto_init. */
 export async function waitForRepositoryGitStorage(
   octokit: Octokit,
   owner: string,
   repo: string,
-  maxAttempts = 12,
+  maxAttempts = 16,
 ) {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
@@ -198,7 +218,7 @@ export async function waitForRepositoryGitStorage(
         throw error;
       }
 
-      await sleep(750 * (attempt + 1));
+      await sleep(Math.min(2500, 750 * (attempt + 1)));
     }
   }
 }
@@ -269,14 +289,17 @@ export async function ensureGitHubRepository(
   isPrivate: boolean,
 ) {
   try {
+    // auto_init creates an initial commit so the Git Data API is usable
+    // immediately (empty repos often return 409 "git repository is empty").
     const { data } = await octokit.rest.repos.createForAuthenticatedUser({
       name: repoName,
       private: isPrivate,
-      auto_init: false,
+      auto_init: true,
     });
     return {
       repo: data,
       branch: data.default_branch ?? "main",
+      created: true as const,
     };
   } catch (error) {
     if (!isRepoNameExistsError(error)) {
@@ -291,7 +314,35 @@ export async function ensureGitHubRepository(
     return {
       repo: existing,
       branch: existing.default_branch ?? "main",
+      created: false as const,
     };
+  }
+}
+
+/**
+ * Bootstrap an empty repository so subsequent Git Data API calls succeed.
+ * Uses the Contents API, which works on empty repos where createBlob returns 409.
+ */
+export async function bootstrapEmptyRepository(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+) {
+  try {
+    // Omit branch so GitHub can create the default branch on an empty repo.
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path: ".polaris-init",
+      message: "Initialize repository",
+      content: Buffer.from("\n", "utf8").toString("base64"),
+    });
+  } catch (error) {
+    // Another process may have initialized the branch already.
+    if (error instanceof RequestError && error.status === 422) {
+      return;
+    }
+    throw error;
   }
 }
 
@@ -491,12 +542,28 @@ export async function pushProjectFiles(
     files: Array<{ path: string; content: string }>;
   },
 ) {
-  const hasBranch = await repositoryHasBranch(
+  let hasBranch = await repositoryHasBranch(
     octokit,
     args.owner,
     args.repo,
     args.branch,
   );
+
+  if (!hasBranch) {
+    // Leftover empty repos from earlier failed inits need a Contents API bootstrap.
+    try {
+      await bootstrapEmptyRepository(octokit, args.owner, args.repo);
+      await waitForRepositoryBranch(
+        octokit,
+        args.owner,
+        args.repo,
+        args.branch,
+      );
+      hasBranch = true;
+    } catch {
+      return pushFilesAsInitialCommitWithRetry(octokit, args);
+    }
+  }
 
   if (!hasBranch) {
     return pushFilesAsInitialCommitWithRetry(octokit, args);

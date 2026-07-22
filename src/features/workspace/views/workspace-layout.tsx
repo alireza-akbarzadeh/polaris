@@ -21,6 +21,7 @@ import { WorkspaceSidebar } from "@/features/workspace/components/workspace-side
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
 import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
+import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
@@ -47,6 +48,8 @@ export function WorkspaceLayout({
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const panelSizes = useWorkspaceStore((s) => s.panelSizes);
   const setPanelSizes = useWorkspaceStore((s) => s.setPanelSizes);
+  const cloneFromGitHubOpen = useWorkspaceStore((s) => s.cloneFromGitHubOpen);
+  const closeCloneFromGitHub = useWorkspaceStore((s) => s.closeCloneFromGitHub);
 
   const sidebarPanelRef = usePanelRef();
   const terminalPanelRef = usePanelRef();
@@ -111,7 +114,7 @@ export function WorkspaceLayout({
   const editorDefault = Math.max(30, 100 - sidebarDefault - aiDefault);
 
   return (
-    <div className="flex h-dvh w-full flex-col bg-[#1e1f22] text-[#bcbec4]">
+    <div className="flex h-dvh w-full flex-col bg-ws-bg text-ws-text-secondary">
       <WorkspaceToolbar projectId={projectId} projectName={projectName} />
 
       <ResizablePanelGroup
@@ -131,14 +134,14 @@ export function WorkspaceLayout({
           collapsedSize={0}
           minSize="12%"
           defaultSize={`${sidebarDefault}`}
-          className="bg-[#2b2d30]"
+          className="bg-ws-panel"
         >
-          <aside className="flex h-full flex-col border-r border-[#1e1f22]">
+          <aside className="flex h-full flex-col border-r border-ws-border-subtle">
             <WorkspaceSidebar projectId={projectId} />
           </aside>
         </ResizablePanel>
 
-        <ResizableHandle className="w-px bg-[#1e1f22] after:hidden hover:bg-[#3574f0]" />
+        <ResizableHandle className="w-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
 
         <ResizablePanel id="editor" minSize="30%" className="min-w-0">
           <ResizablePanelGroup
@@ -150,11 +153,11 @@ export function WorkspaceLayout({
             }}
             onLayoutChanged={onVerticalLayoutChanged}
           >
-            <ResizablePanel id="main" minSize="20%" className="min-h-0 bg-[#1e1f22]">
+            <ResizablePanel id="main" minSize="20%" className="min-h-0 bg-ws-bg">
               <WorkspaceEditorPanel>{children}</WorkspaceEditorPanel>
             </ResizablePanel>
 
-            <ResizableHandle className="h-px bg-[#1e1f22] after:hidden hover:bg-[#3574f0]" />
+            <ResizableHandle className="h-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
 
             <ResizablePanel
               id="terminal"
@@ -163,14 +166,14 @@ export function WorkspaceLayout({
               collapsedSize={0}
               minSize="15%"
               defaultSize={`${terminalDefault}`}
-              className="bg-[#2b2d30]"
+              className="bg-ws-panel"
             >
               <WorkspaceTerminal projectId={projectId} />
             </ResizablePanel>
           </ResizablePanelGroup>
         </ResizablePanel>
 
-        <ResizableHandle className="w-px bg-[#1e1f22] after:hidden hover:bg-[#3574f0]" />
+        <ResizableHandle className="w-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
 
         <ResizablePanel
           id="ai"
@@ -179,7 +182,7 @@ export function WorkspaceLayout({
           collapsedSize={0}
           minSize="18%"
           defaultSize={`${aiDefault}`}
-          className="bg-[#2b2d30]"
+          className="bg-ws-panel"
         >
           <WorkspaceAiSidebar
             projectId={projectId}
@@ -191,6 +194,12 @@ export function WorkspaceLayout({
       <WorkspaceSettingsDialog />
       <WorkspaceGoToFileDialog projectId={projectId} />
       <InitializeGitRepositoryDialog projectId={projectId} />
+      <CloneFromGitHubDialog
+        open={cloneFromGitHubOpen}
+        onOpenChange={(open) => {
+          if (!open) closeCloneFromGitHub();
+        }}
+      />
       <WorkspaceStatusBar projectId={projectId} />
     </div>
   );

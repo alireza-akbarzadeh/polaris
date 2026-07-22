@@ -32,15 +32,15 @@ function EditorViewTabs({
   previewAvailable: boolean;
 }) {
   return (
-    <div className="flex h-8 shrink-0 items-end gap-px border-b border-[#2b2d30] bg-[#2b2d30] px-1">
+    <div className="flex h-8 shrink-0 items-end gap-px border-b border-ws-panel bg-ws-panel px-1">
       <button
         type="button"
         onClick={() => onChange("code")}
         className={cn(
           "inline-flex h-7 items-center gap-1.5 rounded-t-sm px-3 text-[11px] font-medium transition-colors",
           activeTab === "code"
-            ? "bg-[#1e1f22] text-[#dfdfdf]"
-            : "text-[#9a9a9a] hover:text-[#dfdfdf]",
+            ? "bg-ws-bg text-ws-text"
+            : "text-ws-text-muted hover:text-ws-text",
         )}
       >
         <Code2Icon className="size-3" />
@@ -53,8 +53,8 @@ function EditorViewTabs({
           className={cn(
             "inline-flex h-7 items-center gap-1.5 rounded-t-sm px-3 text-[11px] font-medium transition-colors",
             activeTab === "preview"
-              ? "bg-[#1e1f22] text-[#dfdfdf]"
-              : "text-[#9a9a9a] hover:text-[#dfdfdf]",
+              ? "bg-ws-bg text-ws-text"
+              : "text-ws-text-muted hover:text-ws-text",
           )}
         >
           <GlobeIcon className="size-3" />
@@ -151,7 +151,7 @@ export function FileEditorView({ projectId, filePath }: FileEditorViewProps) {
 
   if (!filePath) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-[13px] text-[#9a9a9a]">
+      <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
         Select a file from the project tree on the left.
       </div>
     );
@@ -159,7 +159,7 @@ export function FileEditorView({ projectId, filePath }: FileEditorViewProps) {
 
   if (file === undefined) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-[13px] text-[#9a9a9a]">
+      <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
         Loading file…
       </div>
     );
@@ -167,9 +167,9 @@ export function FileEditorView({ projectId, filePath }: FileEditorViewProps) {
 
   if (file === null || file.kind !== "file") {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-[13px] text-[#9a9a9a]">
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-[13px] text-ws-text-muted">
         <p>File not found</p>
-        <code className="rounded bg-[#2b2d30] px-2 py-1 font-mono text-[12px] text-[#bcbec4]">
+        <code className="rounded bg-ws-panel px-2 py-1 font-mono text-[12px] text-ws-text-secondary">
           {filePath}
         </code>
       </div>

@@ -30,6 +30,7 @@ type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   goToFileOpen: boolean;
   gitInitDialogOpen: boolean;
+  cloneFromGitHubOpen: boolean;
   leftPanelView: LeftPanelView;
   currentFilePath: string | null;
   hydrated: boolean;
@@ -49,6 +50,8 @@ type WorkspaceState = WorkspacePrefs & {
   closeGoToFile: () => void;
   openGitInitDialog: () => void;
   closeGitInitDialog: () => void;
+  openCloneFromGitHub: () => void;
+  closeCloneFromGitHub: () => void;
   setLeftPanelView: (view: LeftPanelView) => void;
   setCurrentFilePath: (path: string | null) => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
@@ -88,6 +91,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   settingsOpen: false,
   goToFileOpen: false,
   gitInitDialogOpen: false,
+  cloneFromGitHubOpen: false,
   leftPanelView: "explorer",
   currentFilePath: null,
   hydrated: false,
@@ -111,6 +115,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeGoToFile: () => set({ goToFileOpen: false }),
   openGitInitDialog: () => set({ gitInitDialogOpen: true }),
   closeGitInitDialog: () => set({ gitInitDialogOpen: false }),
+  openCloneFromGitHub: () => set({ cloneFromGitHubOpen: true }),
+  closeCloneFromGitHub: () => set({ cloneFromGitHubOpen: false }),
   setLeftPanelView: (view) =>
     set({ leftPanelView: view, sidebarOpen: true }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),

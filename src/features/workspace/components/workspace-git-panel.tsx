@@ -42,7 +42,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 
   if (project === undefined) {
     return (
-      <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-[#787878]">
+      <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-ws-text-muted">
         <Loader2Icon className="size-3.5 animate-spin" />
         Loading…
       </div>
@@ -70,7 +70,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex h-7 shrink-0 items-end gap-px border-b border-[#1e1f22] bg-[#2b2d30] px-1">
+      <div className="flex h-7 shrink-0 items-end gap-px border-b border-ws-border-subtle bg-ws-panel px-1">
         {GIT_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -79,13 +79,13 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
             className={cn(
               "inline-flex h-6 items-center gap-1.5 rounded-t-sm px-2.5 text-[11px] font-medium transition-colors",
               activeTab === tab.id
-                ? "bg-[#1e1f22] text-[#dfdfdf]"
-                : "text-[#9a9a9a] hover:text-[#dfdfdf]",
+                ? "bg-ws-bg text-ws-text"
+                : "text-ws-text-muted hover:text-ws-text",
             )}
           >
             {tab.label}
             {tab.id === "changes" && changeCount > 0 ? (
-              <span className="rounded-full bg-[#3574f0] px-1.5 text-[9px] text-white">
+              <span className="rounded-full bg-ws-accent px-1.5 text-[9px] text-white">
                 {changeCount}
               </span>
             ) : null}
@@ -95,7 +95,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 
       {activeTab === "changes" ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="space-y-2 border-b border-[#1e1f22] p-3">
+          <div className="space-y-2 border-b border-ws-border-subtle p-3">
             <GitHubConnectionStatus className="text-[11px]" />
             {isGitHub ? (
               <>
@@ -104,14 +104,14 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Commit message"
                   rows={3}
-                  className="min-h-[72px] resize-none border-[#4e5155] bg-[#1e1f22] text-[12px] text-[#dfdfdf] placeholder:text-[#6f737a] focus-visible:ring-[#3574f0]"
+                  className="min-h-[72px] resize-none border-ws-border bg-ws-bg text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:ring-ws-accent"
                 />
                 <Button
                   type="button"
                   size="sm"
                   disabled={!canPush}
                   onClick={() => void onCommitAndPush()}
-                  className="h-7 w-full bg-[#3574f0] text-[11px] text-white hover:bg-[#2d5fd4] disabled:opacity-50"
+                  className="h-7 w-full bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover disabled:opacity-50"
                 >
                   {isPushing ? (
                     <>
@@ -127,7 +127,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                   )}
                 </Button>
                 {changeCount > 0 && stagedCount === 0 ? (
-                  <p className="text-[10px] text-[#787878]">
+                  <p className="text-[10px] text-ws-text-muted">
                     Stage files below before committing.
                   </p>
                 ) : null}
@@ -169,7 +169,7 @@ function GitInfoTab({
 }) {
   return (
     <div className="flex-1 overflow-auto">
-      <div className="space-y-3 border-b border-[#1e1f22] p-3">
+      <div className="space-y-3 border-b border-ws-border-subtle p-3">
         <div className="flex items-center gap-2">
           <Image
             src="/images/github.png"
@@ -178,7 +178,7 @@ function GitInfoTab({
             height={14}
             className="size-3.5 opacity-80 dark:invert"
           />
-          <span className="text-[12px] font-medium text-[#dfdfdf]">Git</span>
+          <span className="text-[12px] font-medium text-ws-text">Git</span>
         </div>
         <GitHubConnectionStatus className="text-[11px]" />
       </div>
@@ -198,7 +198,7 @@ function GitInfoTab({
             />
           ) : null}
           <div className="space-y-1">
-            <p className="text-[10px] tracking-wide text-[#6f737a] uppercase">
+            <p className="text-[10px] tracking-wide text-ws-text-muted uppercase">
               Repository
             </p>
             <a
@@ -209,7 +209,7 @@ function GitInfoTab({
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 truncate text-[11px] text-[#589df6] hover:underline"
+              className="flex items-center gap-1 truncate text-[11px] text-ws-link hover:underline"
             >
               <span className="truncate">{project.githubRepoUrl}</span>
               <ExternalLinkIcon className="size-3 shrink-0" />
@@ -232,14 +232,14 @@ function InitializeRepositoryPrompt({
 
   const content = (
     <div className="space-y-2">
-      <p className="text-[11px] text-[#9a9a9a]">
+      <p className="text-[11px] text-ws-text-muted">
         Create a GitHub repository for this project to track and push changes.
       </p>
       <Button
         type="button"
         size="sm"
         onClick={openGitInitDialog}
-        className="h-7 w-full bg-[#3574f0] text-[11px] text-white hover:bg-[#2d5fd4]"
+        className="h-7 w-full bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
       >
         Initialize Repository
       </Button>
@@ -264,9 +264,9 @@ function GitInfoRow({
 }) {
   return (
     <div className="flex items-center gap-2 text-[11px]">
-      <span className="text-[#6f737a]">{icon}</span>
-      <span className="text-[#6f737a]">{label}</span>
-      <span className="ml-auto font-mono text-[#bcbec4]">{value}</span>
+      <span className="text-ws-text-muted">{icon}</span>
+      <span className="text-ws-text-muted">{label}</span>
+      <span className="ml-auto font-mono text-ws-text-secondary">{value}</span>
     </div>
   );
 }

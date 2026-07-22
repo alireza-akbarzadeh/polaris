@@ -55,9 +55,9 @@ function ToolbarTooltipButton({
           aria-pressed={pressed}
           onClick={onClick}
           className={cn(
-            "relative size-7 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
+            "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
             pressed &&
-              "bg-[#3c3f41] text-[#dfdfdf] after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-[#3574f0]",
+              "bg-ws-hover text-ws-text after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-ws-accent",
           )}
         >
           {children}
@@ -66,7 +66,7 @@ function ToolbarTooltipButton({
       <TooltipContent
         side="bottom"
         sideOffset={6}
-        className="flex items-center gap-3 border border-[#5a5d63] bg-[#3c3f41] px-2.5 py-1.5 text-[#dfdfdf] [&_svg]:hidden"
+        className="flex items-center gap-3 border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-ws-text [&_svg]:hidden"
       >
         <span className="text-xs">{label}</span>
         <KbdGroup className="gap-0.5 opacity-80">{shortcut}</KbdGroup>
@@ -77,7 +77,7 @@ function ToolbarTooltipButton({
 
 function ModKey() {
   return (
-    <Kbd className="h-4 min-w-4 border-[#5a5d63] bg-[#2b2d30] px-1 text-[10px] text-[#dfdfdf]">
+    <Kbd className="h-4 min-w-4 border-ws-border-strong bg-ws-panel px-1 text-[10px] text-ws-text">
       ⌘
     </Kbd>
   );
@@ -85,7 +85,7 @@ function ModKey() {
 
 function ShortcutKey({ children }: { children: ReactNode }) {
   return (
-    <Kbd className="h-4 min-w-4 border-[#5a5d63] bg-[#2b2d30] px-1 text-[10px] text-[#dfdfdf]">
+    <Kbd className="h-4 min-w-4 border-ws-border-strong bg-ws-panel px-1 text-[10px] text-ws-text">
       {children}
     </Kbd>
   );
@@ -101,7 +101,7 @@ export function WorkspaceToolbar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-9 shrink-0 items-center gap-1 border-b border-[#1e1f22] bg-[#2b2d30] px-1.5">
+      <header className="flex h-9 shrink-0 items-center gap-1 border-b border-ws-border-subtle bg-ws-panel px-1.5">
         <div className="flex min-w-0 flex-1 items-center px-1.5">
           <WorkspaceBreadcrumb
             projectId={projectId}
@@ -154,7 +154,7 @@ export function WorkspaceToolbar({
 
           <Separator
             orientation="vertical"
-            className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-[#4e5155]"
+            className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-ws-border"
           />
 
           <WorkspacePublishMenu projectId={projectId} />
@@ -175,7 +175,7 @@ export function WorkspaceToolbar({
 
         <Separator
           orientation="vertical"
-          className="mx-1.5 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-[#4e5155]"
+          className="mx-1.5 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-ws-border"
         />
 
         <div className="flex items-center pr-1 [&_.cl-userButtonAvatarBox]:size-6 [&_.cl-userButtonTrigger]:rounded-sm">

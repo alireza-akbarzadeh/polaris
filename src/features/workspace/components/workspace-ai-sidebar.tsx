@@ -165,19 +165,19 @@ function WorkspaceAiChatSession({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[#1e1f22] px-3">
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
           aria-label="Back to agents"
-          className="size-6 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+          className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           onClick={onBack}
         >
           <ArrowLeftIcon className="size-3.5" />
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-semibold tracking-wide text-[#dfdfdf]">
+          <p className="truncate text-[12px] font-semibold tracking-wide text-ws-text">
             {session.title}
           </p>
         </div>
@@ -186,7 +186,7 @@ function WorkspaceAiChatSession({
           variant="ghost"
           size="icon-sm"
           aria-label="Reset chat"
-          className="size-6 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+          className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           onClick={resetChat}
         >
           <RotateCcwIcon className="size-3.5" />
@@ -196,24 +196,24 @@ function WorkspaceAiChatSession({
           variant="ghost"
           size="icon-sm"
           aria-label="Close AI panel"
-          className="size-6 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+          className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           onClick={() => runCommand("toggleAiPanel")}
         >
           <XIcon className="size-3.5" />
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 border-b border-[#1e1f22] px-3 py-2">
+      <div className="flex flex-wrap gap-1.5 border-b border-ws-border-subtle px-3 py-2">
         <Badge
           variant="outline"
-          className="h-5 rounded-sm border-[#4e5155] bg-[#1e1f22] px-1.5 text-[10px] font-normal text-[#bcbec4]"
+          className="h-5 rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-secondary"
         >
           {projectName ?? "Workspace"}
         </Badge>
         {activeFile ? (
           <Badge
             variant="outline"
-            className="h-5 max-w-[140px] truncate rounded-sm border-[#4e5155] bg-[#1e1f22] px-1.5 text-[10px] font-normal text-[#9a9a9a]"
+            className="h-5 max-w-[140px] truncate rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
           >
             {activeFile}
           </Badge>
@@ -235,7 +235,7 @@ function WorkspaceAiChatSession({
                   className="size-5"
                 />
               }
-              className="text-[#9a9a9a]"
+              className="text-ws-text-muted"
             />
           ) : (
             <>
@@ -259,7 +259,7 @@ function WorkspaceAiChatSession({
                           height={14}
                           className="size-3.5"
                         />
-                        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#787878]">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ws-text-muted">
                           Polaris
                         </span>
                       </div>
@@ -267,8 +267,8 @@ function WorkspaceAiChatSession({
                     <MessageContent
                       className={
                         message.role === "user"
-                          ? "rounded-xl border border-[#3574f0]/30 bg-[#3574f0]/15 px-3 py-2 text-[13px] text-[#dfdfdf] group-[.is-user]:bg-[#3574f0]/15"
-                          : "rounded-xl border border-[#4e5155]/60 bg-[#1e1f22]/80 px-3 py-2 text-[13px] leading-relaxed text-[#bcbec4]"
+                          ? "rounded-xl border border-ws-accent/30 bg-ws-accent/15 px-3 py-2 text-[13px] text-ws-text group-[.is-user]:bg-ws-accent/15"
+                          : "rounded-xl border border-ws-border/60 bg-ws-bg/80 px-3 py-2 text-[13px] leading-relaxed text-ws-text-secondary"
                       }
                     >
                       {message.parts.map((part, index) =>
@@ -283,7 +283,7 @@ function WorkspaceAiChatSession({
                         ) : part.type === "file" ? (
                           <p
                             key={`${message.id}-${index}`}
-                            className="text-[11px] text-[#9a9a9a]"
+                            className="text-[11px] text-ws-text-muted"
                           >
                             Attached: {part.filename ?? "file"}
                           </p>
@@ -304,7 +304,7 @@ function WorkspaceAiChatSession({
                       height={14}
                       className="size-3.5"
                     />
-                    <TextShimmer className="text-[11px] text-[#787878]">
+                    <TextShimmer className="text-[11px] text-ws-text-muted">
                       Thinking…
                     </TextShimmer>
                   </div>
@@ -319,17 +319,17 @@ function WorkspaceAiChatSession({
             </>
           )}
         </ConversationContent>
-        <ConversationScrollButton className="border-[#4e5155] bg-[#3c3f41] text-[#dfdfdf] hover:bg-[#45484c]" />
+        <ConversationScrollButton className="border-ws-border bg-ws-hover text-ws-text hover:bg-ws-hover-deep" />
       </Conversation>
 
-      <div className="shrink-0 space-y-2 border-t border-[#1e1f22] p-3">
+      <div className="shrink-0 space-y-2 border-t border-ws-border-subtle p-3">
         <Suggestions className="gap-1.5 px-0.5">
           {suggestions.map((suggestion) => (
             <Suggestion
               key={suggestion}
               suggestion={suggestion}
               onClick={sendSuggestion}
-              className="h-7 rounded-full border-[#4e5155] bg-[#3c3f41] px-3 text-[11px] text-[#dfdfdf] hover:bg-[#45484c] hover:text-white"
+              className="h-7 rounded-full border-ws-border bg-ws-hover px-3 text-[11px] text-ws-text hover:bg-ws-hover-deep hover:text-white"
             />
           ))}
         </Suggestions>
@@ -427,18 +427,18 @@ export function WorkspaceAiSidebar({
   };
 
   return (
-    <aside className="flex h-full flex-col border-l border-[#1e1f22] bg-[#2b2d30]">
+    <aside className="flex h-full flex-col border-l border-ws-border-subtle bg-ws-panel">
       {panelView === "history" ? (
         <>
-          <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[#1e1f22] px-3">
-            <div className="flex size-5 items-center justify-center rounded-sm bg-[#3574f0]/15">
+          <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
+            <div className="flex size-5 items-center justify-center rounded-sm bg-ws-accent/15">
               <SparklesIcon
-                className="size-3 text-[#6a9bf5]"
+                className="size-3 text-ws-accent-soft"
                 strokeWidth={1.75}
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-semibold tracking-wide text-[#dfdfdf]">
+              <p className="truncate text-[12px] font-semibold tracking-wide text-ws-text">
                 Polaris Agents
               </p>
             </div>
@@ -447,7 +447,7 @@ export function WorkspaceAiSidebar({
               variant="ghost"
               size="icon-sm"
               aria-label="Close AI panel"
-              className="size-6 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+              className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
               onClick={() => runCommand("toggleAiPanel")}
             >
               <XIcon className="size-3.5" />

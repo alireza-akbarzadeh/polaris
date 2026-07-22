@@ -1,9 +1,10 @@
 "use client";
 
 import { EditorView } from "@codemirror/view";
-import { vscodeDark } from "@uiw/codemirror-theme-vscode";
+import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import CodeMirror from "@uiw/react-codemirror";
-import { useMemo } from "react";
+import { useTheme } from "next-themes";
+import { useMemo, useSyncExternalStore } from "react";
 
 import {
   languageExtensionForPath,
@@ -46,6 +47,13 @@ export function CodeEditor({
   readOnly = false,
 }: CodeEditorProps) {
   const fileName = fileNameFromPath(filePath);
+  const { resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
 
   const extensions = useMemo(() => {
     const base = [customSetup, ...languageExtensionForPath(filePath)];
@@ -57,11 +65,16 @@ export function CodeEditor({
     return [...base, ...suggestion(fileName)];
   }, [fileName, filePath, readOnly]);
 
+  const theme = useMemo(
+    () => [isDark ? vscodeDark : vscodeLight, editorFontTheme],
+    [isDark],
+  );
+
   return (
     <CodeMirror
       value={value}
       height="100%"
-      theme={[vscodeDark, editorFontTheme]}
+      theme={theme}
       extensions={extensions}
       onChange={onChange}
       readOnly={readOnly}

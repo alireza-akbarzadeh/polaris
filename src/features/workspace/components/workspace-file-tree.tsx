@@ -657,7 +657,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
 
   if (files === undefined) {
     return (
-      <p className="px-3 py-2 text-[11px] text-[#787878]">Loading files…</p>
+      <p className="px-3 py-2 text-[11px] text-ws-text-muted">Loading files…</p>
     );
   }
 
@@ -674,7 +674,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
             <div className="flex min-h-24 flex-1 flex-col p-1.5">
               {renderPendingCreate(undefined, 0)}
               {!pendingCreate ? (
-                <p className="px-2 py-2 text-[11px] text-[#787878]">No files yet</p>
+                <p className="px-2 py-2 text-[11px] text-ws-text-muted">No files yet</p>
               ) : null}
             </div>
           </ContextMenuTrigger>
@@ -765,7 +765,7 @@ function TreeToolbar({
   onCollapseAll: () => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 border-b border-[#1e1f22] px-1 py-1">
+    <div className="flex items-center gap-0.5 border-b border-ws-border-subtle px-1 py-1">
       <TreeToolbarButton label="New File" onClick={onNewFile}>
         <FilePlusIcon className="size-3.5" />
       </TreeToolbarButton>
@@ -796,7 +796,7 @@ function TreeToolbarButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="size-6 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+      className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
     >
       {children}
     </Button>
@@ -847,11 +847,11 @@ function FileTreeMenuContent({
   showItemActions = true,
 }: FileTreeMenuContentProps) {
   const itemClassName =
-    "cursor-default gap-0 py-1 text-[12px] text-[#dfdfdf] focus:bg-[#064eb3] focus:text-white data-[disabled]:text-[#787878]";
+    "cursor-default gap-0 py-1 text-[12px] text-ws-text focus:bg-ws-menu-focus focus:text-white data-[disabled]:text-ws-text-muted";
   const destructiveClassName =
-    "cursor-default gap-0 py-1 text-[12px] text-[#dfdfdf] focus:bg-[#5c2b29] focus:text-[#ff6b68]";
-  const shortcutClassName = "pl-6 text-[11px] tracking-normal text-[#9a9a9a]";
-  const separatorClassName = "mx-0 my-1 bg-[#4e5155]";
+    "cursor-default gap-0 py-1 text-[12px] text-ws-text focus:bg-ws-danger-focus focus:text-ws-danger";
+  const shortcutClassName = "pl-6 text-[11px] tracking-normal text-ws-text-muted";
+  const separatorClassName = "mx-0 my-1 bg-ws-border";
 
   const Item = menuType === "dropdown" ? DropdownMenuItem : ContextMenuItem;
   const Separator =
@@ -862,7 +862,7 @@ function FileTreeMenuContent({
     menuType === "dropdown" ? DropdownMenuContent : ContextMenuContent;
 
   return (
-    <Content className="min-w-56 rounded-md border-[#4e5155] bg-[#3c3f41] p-1 text-[#dfdfdf] shadow-lg">
+    <Content className="min-w-56 rounded-md border-ws-border bg-ws-hover p-1 text-ws-text shadow-lg">
       {isFolder ? (
         <>
           <Item onClick={onNewFile} className={itemClassName}>
@@ -1196,16 +1196,16 @@ function FileTreeItem({
       }}
       onDoubleClick={startRename}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] text-[#bcbec4] hover:bg-[#3c3f41] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#3574f0]",
-        isFocused && "bg-[#3c3f41] text-[#dfdfdf]",
+        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] text-ws-text-secondary hover:bg-ws-hover focus:outline-none focus-visible:ring-1 focus-visible:ring-ws-accent",
+        isFocused && "bg-ws-hover text-ws-text",
         isCut && "opacity-50",
       )}
       style={{ paddingLeft: `${8 + depth * 12}px` }}
     >
       {open ? (
-        <ChevronDownIcon className="size-3 shrink-0 text-[#6f737a]" />
+        <ChevronDownIcon className="size-3 shrink-0 text-ws-text-muted" />
       ) : (
-        <ChevronRightIcon className="size-3 shrink-0 text-[#6f737a]" />
+        <ChevronRightIcon className="size-3 shrink-0 text-ws-text-muted" />
       )}
       <span className="size-3.5 shrink-0 [&_svg]:size-full">
         {open ? (
@@ -1252,10 +1252,10 @@ function FileTreeItem({
         startRename();
       }}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-[12px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#3574f0]",
+        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-[12px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ws-accent",
         active || isFocused
-          ? "bg-[#3c3f41] text-[#dfdfdf]"
-          : "text-[#9a9a9a] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
+          ? "bg-ws-hover text-ws-text"
+          : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
         isCut && "opacity-50",
       )}
       style={{ paddingLeft: `${20 + depth * 12}px` }}
@@ -1274,7 +1274,7 @@ function FileTreeItem({
           <div
             className={cn(
               "group flex items-center rounded-sm",
-              (menuOpen || active) && "bg-[#3c3f41]/60",
+              (menuOpen || active) && "bg-ws-hover/60",
             )}
           >
             {rowInner}
@@ -1288,7 +1288,7 @@ function FileTreeItem({
                     aria-label={`Actions for ${node.name}`}
                     onClick={(e) => e.stopPropagation()}
                     className={cn(
-                      "mr-0.5 size-5 shrink-0 rounded-sm text-[#afb1b3] opacity-0 hover:bg-[#4e5155] hover:text-[#dfdfdf] group-hover:opacity-100",
+                      "mr-0.5 size-5 shrink-0 rounded-sm text-ws-text-muted opacity-0 hover:bg-ws-border hover:text-ws-text group-hover:opacity-100",
                       menuOpen && "opacity-100",
                     )}
                   >
@@ -1342,22 +1342,22 @@ function FileTreeItem({
       ) : null}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="border-[#4e5155] bg-[#2b2d30] text-[#dfdfdf]">
+        <AlertDialogContent className="border-ws-border bg-ws-panel text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {node.name}?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9a9a9a]">
+            <AlertDialogDescription className="text-ws-text-muted">
               {isFolder
                 ? "This will permanently delete this folder and all its contents."
                 : "This will permanently delete this file."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-[#4e5155] bg-[#3c3f41] text-[#dfdfdf] hover:bg-[#4e5155]">
+            <AlertDialogCancel className="border-ws-border bg-ws-hover text-ws-text hover:bg-ws-border">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void onDelete()}
-              className="bg-[#c42b1c] text-white hover:bg-[#a82418]"
+              className="bg-ws-danger-bg text-white hover:bg-ws-danger-bg-hover"
             >
               Delete
             </AlertDialogAction>
@@ -1418,7 +1418,7 @@ const RenameInput = ({
         }
       }}
       onBlur={onCommit}
-      className="h-5 min-w-0 flex-1 border-[#4e5155] bg-[#1e1f22] px-1 py-0 text-[12px] text-[#dfdfdf] focus-visible:ring-1 focus-visible:ring-[#3574f0]"
+      className="h-5 min-w-0 flex-1 border-ws-border bg-ws-bg px-1 py-0 text-[12px] text-ws-text focus-visible:ring-1 focus-visible:ring-ws-accent"
       onClick={(e) => e.stopPropagation()}
     />
   );

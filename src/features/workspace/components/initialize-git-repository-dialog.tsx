@@ -72,10 +72,10 @@ export function InitializeGitRepositoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-[#4e5155] bg-[#2b2d30] text-[#dfdfdf] sm:max-w-md">
+      <DialogContent className="border-ws-border bg-ws-panel text-ws-text sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Initialize Repository</DialogTitle>
-          <DialogDescription className="text-[#9a9a9a]">
+          <DialogDescription className="text-ws-text-muted">
             Create a new GitHub repository and push your project files.
           </DialogDescription>
         </DialogHeader>
@@ -85,7 +85,7 @@ export function InitializeGitRepositoryDialog({
           <div className="space-y-1.5">
             <label
               htmlFor="git-repo-name"
-              className="text-[11px] text-[#9a9a9a]"
+              className="text-[11px] text-ws-text-muted"
             >
               Repository name
             </label>
@@ -94,25 +94,25 @@ export function InitializeGitRepositoryDialog({
               value={repoName}
               onChange={(e) => setRepoName(e.target.value)}
               placeholder="repository-name"
-              className="h-8 border-[#4e5155] bg-[#1e1f22] text-[12px] text-[#dfdfdf] placeholder:text-[#6f737a] focus-visible:ring-[#3574f0]"
+              className="h-8 border-ws-border bg-ws-bg text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:ring-ws-accent"
             />
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-[#9a9a9a]">
+          <label className="flex items-center gap-2 text-[11px] text-ws-text-muted">
             <input
               type="checkbox"
               checked={isPrivate}
               onChange={(e) => setIsPrivate(e.target.checked)}
-              className="accent-[#3574f0]"
+              className="accent-ws-accent"
             />
             Private repository
           </label>
           {!isConnected ? (
-            <p className="text-[11px] text-[#787878]">
+            <p className="text-[11px] text-ws-text-muted">
               Connect GitHub above before initializing a repository.
             </p>
           ) : !hasRepoScope ? (
             <div className="space-y-2">
-              <p className="text-[11px] text-[#c9a227]">
+              <p className="text-[11px] text-ws-warning">
                 {GITHUB_REPO_SCOPE_MESSAGE}
               </p>
               <Button
@@ -120,7 +120,7 @@ export function InitializeGitRepositoryDialog({
                 size="sm"
                 disabled={isAuthorizing}
                 onClick={() => void connect()}
-                className="h-7 bg-[#3574f0] text-[11px] text-white hover:bg-[#2d5fd4]"
+                className="h-7 bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
               >
                 {isAuthorizing ? (
                   <>
@@ -134,7 +134,7 @@ export function InitializeGitRepositoryDialog({
             </div>
           ) : null}
           {lastError ? (
-            <p className="rounded-sm border border-[#5c2b29] bg-[#3a2323] px-2 py-1.5 text-[11px] text-[#ff8a85]">
+            <p className="rounded-sm border border-ws-danger-focus bg-ws-danger-surface px-2 py-1.5 text-[11px] text-ws-danger-soft">
               {lastError}
             </p>
           ) : null}
@@ -145,7 +145,7 @@ export function InitializeGitRepositoryDialog({
             type="button"
             variant="ghost"
             onClick={closeGitInitDialog}
-            className="text-[#bcbec4] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+            className="text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
           >
             Cancel
           </Button>
@@ -153,7 +153,7 @@ export function InitializeGitRepositoryDialog({
             type="button"
             disabled={!canInitialize}
             onClick={() => void onInitialize()}
-            className="bg-[#3574f0] text-white hover:bg-[#2d5fd4] disabled:opacity-50"
+            className="bg-ws-accent text-white hover:bg-ws-accent-hover disabled:opacity-50"
           >
             {isInitializing ? (
               <>

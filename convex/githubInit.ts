@@ -11,7 +11,7 @@ import {
   formatGitHubApiError,
   getClerkGitHubToken,
   pushProjectFiles,
-  waitForRepositoryGitStorage,
+  waitForRepositoryBranch,
 } from "./lib/github";
 
 const REPO_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
@@ -94,14 +94,28 @@ export const initializeRepository = action({
     const owner = connection.username;
 
     try {
-      const { branch } = await ensureGitHubRepository(
+      const { branch, created } = await ensureGitHubRepository(
         octokit,
         owner,
         repoName,
         args.isPrivate ?? true,
       );
 
-      await waitForRepositoryGitStorage(octokit, owner, repoName);
+      // Newly created repos (auto_init) need a moment for the default branch.
+      // Existing empty leftovers are bootstrapped inside pushProjectFiles.
+      try {
+        await waitForRepositoryBranch(
+          octokit,
+          owner,
+          repoName,
+          branch,
+          created ? 20 : 4,
+        );
+      } catch (error) {
+        if (created) {
+          throw error;
+        }
+      }
 
       const commitSha = await pushProjectFiles(octokit, {
         owner,

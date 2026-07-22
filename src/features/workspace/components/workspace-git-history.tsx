@@ -76,7 +76,7 @@ export function WorkspaceGitHistory({
 
   if (!enabled) {
     return (
-      <p className="px-3 py-4 text-[11px] text-[#787878]">
+      <p className="px-3 py-4 text-[11px] text-ws-text-muted">
         Connect and publish this project to GitHub to view commit history.
       </p>
     );
@@ -84,8 +84,8 @@ export function WorkspaceGitHistory({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-7 shrink-0 items-center justify-between border-b border-[#1e1f22] px-2">
-        <span className="text-[11px] text-[#9a9a9a]">Commit History</span>
+      <div className="flex h-7 shrink-0 items-center justify-between border-b border-ws-border-subtle px-2">
+        <span className="text-[11px] text-ws-text-muted">Commit History</span>
         <Button
           type="button"
           variant="ghost"
@@ -94,7 +94,7 @@ export function WorkspaceGitHistory({
           aria-label="Refresh commit history"
           disabled={isLoading}
           onClick={() => void load()}
-          className="size-5 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+          className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
           <RefreshCwIcon
             className={cn("size-3", isLoading && "animate-spin")}
@@ -104,25 +104,25 @@ export function WorkspaceGitHistory({
 
       <div className="min-h-0 flex-1 overflow-auto">
         {isLoading && commits === null ? (
-          <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-[#787878]">
+          <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-ws-text-muted">
             <Loader2Icon className="size-3.5 animate-spin" />
             Loading commits…
           </div>
         ) : error ? (
           <div className="space-y-2 px-3 py-4">
-            <p className="text-[11px] text-[#ff8a85]">{error}</p>
+            <p className="text-[11px] text-ws-danger-soft">{error}</p>
             <Button
               type="button"
               size="sm"
               variant="ghost"
               onClick={() => void load()}
-              className="h-7 text-[11px] text-[#bcbec4] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+              className="h-7 text-[11px] text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
             >
               Try again
             </Button>
           </div>
         ) : commits && commits.length === 0 ? (
-          <p className="px-3 py-4 text-[11px] text-[#787878]">
+          <p className="px-3 py-4 text-[11px] text-ws-text-muted">
             No commits found on this branch.
           </p>
         ) : (
@@ -133,29 +133,29 @@ export function WorkspaceGitHistory({
                   href={commit.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex gap-2 rounded-sm px-2 py-1.5 transition-colors hover:bg-[#3c3f41]"
+                  className="flex gap-2 rounded-sm px-2 py-1.5 transition-colors hover:bg-ws-hover"
                 >
                   <div className="flex w-3 shrink-0 flex-col items-center pt-1">
                     <span
                       className={cn(
-                        "size-2 rounded-full border border-[#3574f0]",
-                        index === 0 ? "bg-transparent" : "bg-[#3574f0]",
+                        "size-2 rounded-full border border-ws-accent",
+                        index === 0 ? "bg-transparent" : "bg-ws-accent",
                       )}
                     />
                     {index < (commits?.length ?? 0) - 1 ? (
-                      <span className="mt-1 w-px flex-1 bg-[#3574f0]/40" />
+                      <span className="mt-1 w-px flex-1 bg-ws-accent/40" />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-start gap-1">
-                      <GitCommitHorizontalIcon className="mt-0.5 size-3 shrink-0 text-[#6f737a]" />
-                      <p className="min-w-0 flex-1 text-[12px] leading-snug text-[#dfdfdf]">
+                      <GitCommitHorizontalIcon className="mt-0.5 size-3 shrink-0 text-ws-text-muted" />
+                      <p className="min-w-0 flex-1 text-[12px] leading-snug text-ws-text">
                         {commit.message}
                       </p>
-                      <ExternalLinkIcon className="mt-0.5 size-3 shrink-0 text-[#6f737a]" />
+                      <ExternalLinkIcon className="mt-0.5 size-3 shrink-0 text-ws-text-muted" />
                     </div>
-                    <div className="flex items-center gap-2 pl-4 text-[10px] text-[#6f737a]">
-                      <span className="font-mono text-[#589df6]">
+                    <div className="flex items-center gap-2 pl-4 text-[10px] text-ws-text-muted">
+                      <span className="font-mono text-ws-link">
                         {commit.shortSha}
                       </span>
                       <span className="truncate">{commit.authorName}</span>

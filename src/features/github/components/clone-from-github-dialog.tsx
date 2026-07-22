@@ -22,6 +22,7 @@ import {
   useConnectGitHub,
   useGitHubConnection,
 } from "@/features/github/hooks/use-github-connection";
+import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 
 interface CloneFromGitHubDialogProps {
   open: boolean;
@@ -58,7 +59,7 @@ export function CloneFromGitHubDialog({
       router.push(`/projects/${projectId}`);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to clone repository",
+        parseConvexErrorMessage(error, "Failed to clone repository"),
       );
     }
   };

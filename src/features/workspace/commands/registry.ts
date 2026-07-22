@@ -12,6 +12,7 @@ export type CommandId =
   | "closeSettings"
   | "openGoToFile"
   | "closeGoToFile"
+  | "openCloneFromGitHub"
   | "showExplorer"
   | "showSearch"
   | "showGit"
@@ -75,6 +76,7 @@ export const workspaceCommands: Command[] = [
       const s = store();
       if (s.settingsOpen) s.closeSettings();
       else if (s.goToFileOpen) s.closeGoToFile();
+      else if (s.cloneFromGitHubOpen) s.closeCloneFromGitHub();
     },
   },
   {
@@ -87,6 +89,12 @@ export const workspaceCommands: Command[] = [
     id: "closeGoToFile",
     allowInInput: true,
     run: () => store().closeGoToFile(),
+  },
+  {
+    id: "openCloneFromGitHub",
+    shortcut: "mod+i",
+    allowInInput: true,
+    run: () => store().openCloneFromGitHub(),
   },
   {
     id: "showExplorer",
@@ -159,7 +167,9 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
 
   if (command.id === "closeSettings") {
     const s = store();
-    if (!s.settingsOpen && !s.goToFileOpen) return false;
+    if (!s.settingsOpen && !s.goToFileOpen && !s.cloneFromGitHubOpen) {
+      return false;
+    }
   }
 
   event.preventDefault();

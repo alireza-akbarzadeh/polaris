@@ -50,14 +50,14 @@ export function WorkspaceAiHistoryPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="space-y-2 border-b border-[#1e1f22] p-3">
+      <div className="space-y-2 border-b border-ws-border-subtle p-3">
         <div className="relative">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[#787878]" />
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ws-text-muted" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search agents…"
-            className="h-8 border-[#4e5155] bg-[#1e1f22] pl-8 text-[12px] text-[#dfdfdf] placeholder:text-[#787878]"
+            className="h-8 border-ws-border bg-ws-bg pl-8 text-[12px] text-ws-text placeholder:text-ws-text-muted"
           />
         </div>
 
@@ -66,12 +66,12 @@ export function WorkspaceAiHistoryPanel({
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 flex-1 justify-start gap-1.5 border-[#4e5155] bg-[#1e1f22] text-[11px] text-[#dfdfdf] hover:bg-[#3c3f41]"
+            className="h-7 flex-1 justify-start gap-1.5 border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
             onClick={onNewAgent}
           >
             <ListFilterIcon className="size-3.5" />
             New Agent
-            <span className="ml-auto text-[10px] text-[#787878]">Ctrl+N</span>
+            <span className="ml-auto text-[10px] text-ws-text-muted">Ctrl+N</span>
           </Button>
         </div>
       </div>
@@ -80,17 +80,17 @@ export function WorkspaceAiHistoryPanel({
         <div className="space-y-3 p-2">
           {groups.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-              <SparklesIcon className="size-5 text-[#6a9bf5]" />
-              <p className="text-[12px] font-medium text-[#bcbec4]">
+              <SparklesIcon className="size-5 text-ws-accent-soft" />
+              <p className="text-[12px] font-medium text-ws-text-secondary">
                 No agents yet
               </p>
-              <p className="text-[11px] text-[#787878]">
+              <p className="text-[11px] text-ws-text-muted">
                 Start a new agent to plan changes, debug, or draft code.
               </p>
               <Button
                 type="button"
                 size="sm"
-                className="mt-1 h-7 bg-[#3574f0] text-[11px] hover:bg-[#2d66d8]"
+                className="mt-1 h-7 bg-ws-accent text-[11px] hover:bg-ws-accent-hover"
                 onClick={onNewAgent}
               >
                 New Agent
@@ -99,7 +99,7 @@ export function WorkspaceAiHistoryPanel({
           ) : (
             groups.map((group) => (
               <section key={group.label}>
-                <h3 className="px-2 py-1 text-[10px] font-semibold tracking-[0.08em] text-[#787878] uppercase">
+                <h3 className="px-2 py-1 text-[10px] font-semibold tracking-[0.08em] text-ws-text-muted uppercase">
                   {group.label}
                 </h3>
                 <ul className="space-y-0.5">
@@ -116,14 +116,14 @@ export function WorkspaceAiHistoryPanel({
                           className={cn(
                             "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors",
                             isActive
-                              ? "bg-[#3574f0]/15 text-[#dfdfdf]"
-                              : "text-[#bcbec4] hover:bg-[#3c3f41]",
+                              ? "bg-ws-accent/15 text-ws-text"
+                              : "text-ws-text-secondary hover:bg-ws-hover",
                           )}
                         >
                           <Icon
                             className={cn(
                               "mt-0.5 size-3.5 shrink-0",
-                              hasMessages ? "text-[#6a9bf5]" : "text-[#787878]",
+                              hasMessages ? "text-ws-accent-soft" : "text-ws-text-muted",
                             )}
                             strokeWidth={1.75}
                           />
@@ -132,7 +132,7 @@ export function WorkspaceAiHistoryPanel({
                               {session.title}
                             </span>
                             {session.subtitle ? (
-                              <span className="mt-0.5 block truncate text-[10px] text-[#787878]">
+                              <span className="mt-0.5 block truncate text-[10px] text-ws-text-muted">
                                 {session.subtitle}
                               </span>
                             ) : null}

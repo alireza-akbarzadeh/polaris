@@ -77,25 +77,25 @@ export function WorkspaceSwitcher({
         <Button
           type="button"
           variant="ghost"
-          className="h-7 max-w-[220px] gap-2 rounded-sm px-1.5 text-[#dfdfdf] hover:bg-[#3c3f41] hover:text-white"
+          className="h-7 max-w-55 gap-2 rounded-sm text-ws-text hover:bg-ws-hover -ml-4 hover:text-white"
         >
           <Image
             src="/logo.svg"
             alt=""
-            width={16}
-            height={16}
-            className="size-4 shrink-0"
+            width={19}
+            height={19}
+            className="size-5 shrink-0"
           />
           <span className="truncate text-[13px] font-medium">
             {projectName ?? "Project"}
           </span>
-          <ChevronsUpDownIcon className="size-3 shrink-0 text-[#787878]" />
+          <ChevronsUpDownIcon className="size-3 shrink-0 text-ws-text-muted" />
         </Button>
       </PopoverTrigger>
 
       <PopoverContent
         align="start"
-        className="w-80 border-[#4e5155] bg-[#2b2d30] p-0 text-[#dfdfdf]"
+        className="w-80 border-ws-border bg-ws-panel p-0 text-ws-text"
         sideOffset={6}
       >
         <div className="p-3">
@@ -107,7 +107,7 @@ export function WorkspaceSwitcher({
               height={20}
               className="size-5"
             />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#787878]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ws-text-muted">
               Workspace
             </p>
           </div>
@@ -125,19 +125,19 @@ export function WorkspaceSwitcher({
                     setIsRenaming(false);
                   }
                 }}
-                className="h-8 border-[#4e5155] bg-[#1e1f22] text-[13px] text-[#dfdfdf]"
+                className="h-8 border-ws-border bg-ws-bg text-[13px] text-ws-text"
               />
               <Button
                 type="button"
                 size="icon-sm"
-                className="size-8 shrink-0 bg-[#3574f0] hover:bg-[#2d66d8]"
+                className="size-8 shrink-0 bg-ws-accent hover:bg-ws-accent-hover"
                 onClick={() => void saveName()}
               >
                 <CheckIcon className="size-3.5" />
               </Button>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-2 rounded-md border border-[#4e5155] bg-[#1e1f22] px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-ws-border bg-ws-bg px-2.5 py-2">
               <span className="truncate text-[13px] font-medium">
                 {projectName ?? "Project"}
               </span>
@@ -145,7 +145,7 @@ export function WorkspaceSwitcher({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="size-7 shrink-0 text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]"
+                className="size-7 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
                 onClick={() => setIsRenaming(true)}
               >
                 <PencilIcon className="size-3.5" />
@@ -154,13 +154,13 @@ export function WorkspaceSwitcher({
           )}
         </div>
 
-        <Separator className="bg-[#4e5155]" />
+        <Separator className="bg-ws-border" />
 
         <div className="max-h-56 overflow-y-auto p-1.5">
           {projects === undefined ? (
-            <p className="px-2 py-3 text-[12px] text-[#787878]">Loading…</p>
+            <p className="px-2 py-3 text-[12px] text-ws-text-muted">Loading…</p>
           ) : otherProjects.length === 0 ? (
-            <p className="px-2 py-3 text-[12px] text-[#787878]">
+            <p className="px-2 py-3 text-[12px] text-ws-text-muted">
               No other workspaces yet.
             </p>
           ) : (
@@ -172,16 +172,16 @@ export function WorkspaceSwitcher({
                   router.push(`/projects/${project._id}`);
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-[#3c3f41]"
+                className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-ws-hover"
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-[#1e1f22]">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-ws-bg">
                   {getProjectsIcons(project)}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium">
                     {project.name}
                   </span>
-                  <span className="block truncate text-[11px] text-[#787878]">
+                  <span className="block truncate text-[11px] text-ws-text-muted">
                     Updated{" "}
                     {formatDistanceToNow(project.updatedAt, {
                       addSuffix: true,
@@ -193,15 +193,15 @@ export function WorkspaceSwitcher({
           )}
         </div>
 
-        <Separator className="bg-[#4e5155]" />
+        <Separator className="bg-ws-border" />
 
         <div className="flex flex-col gap-0.5 p-1.5">
           <Link
             href="/"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-[13px] text-[#bcbec4] transition-colors hover:bg-[#3c3f41]"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-[13px] text-ws-text-secondary transition-colors hover:bg-ws-hover"
           >
-            <HomeIcon className="size-3.5 text-[#afb1b3]" />
+            <HomeIcon className="size-3.5 text-ws-text-muted" />
             All workspaces
           </Link>
           <button
@@ -210,9 +210,9 @@ export function WorkspaceSwitcher({
               router.push("/");
               setOpen(false);
             }}
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-[13px] text-[#bcbec4] transition-colors hover:bg-[#3c3f41]"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-[13px] text-ws-text-secondary transition-colors hover:bg-ws-hover"
           >
-            <FolderOpenIcon className="size-3.5 text-[#afb1b3]" />
+            <FolderOpenIcon className="size-3.5 text-ws-text-muted" />
             Open workspace picker
           </button>
         </div>

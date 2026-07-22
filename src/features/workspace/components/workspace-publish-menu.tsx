@@ -94,9 +94,9 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
               size="icon-sm"
               aria-label="Publish"
               className={cn(
-                "relative size-7 rounded-sm text-[#afb1b3] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
+                "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
                 hasPendingChanges &&
-                  "text-[#dfdfdf] after:absolute after:right-0.5 after:top-0.5 after:size-1.5 after:rounded-full after:bg-[#3574f0]",
+                  "text-ws-text after:absolute after:right-0.5 after:top-0.5 after:size-1.5 after:rounded-full after:bg-ws-accent",
               )}
             >
               {isPublishing ? (
@@ -110,7 +110,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
         <TooltipContent
           side="bottom"
           sideOffset={6}
-          className="border border-[#5a5d63] bg-[#3c3f41] px-2.5 py-1.5 text-xs text-[#dfdfdf] [&_svg]:hidden"
+          className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-xs text-ws-text [&_svg]:hidden"
         >
           Publish
         </TooltipContent>
@@ -118,15 +118,15 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
 
       <DropdownMenuContent
         align="end"
-        className="w-60 border-[#4e5155] bg-[#2b2d30] text-[#dfdfdf]"
+        className="w-60 border-ws-border bg-ws-panel text-ws-text"
       >
-        <DropdownMenuLabel className="text-[11px] text-[#9a9a9a]">
+        <DropdownMenuLabel className="text-[11px] text-ws-text-muted">
           Source Control
         </DropdownMenuLabel>
 
         {!isConnected ? (
           <DropdownMenuItem
-            className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+            className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
             onClick={() => void connect()}
             disabled={isConnecting}
           >
@@ -141,7 +141,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
           </DropdownMenuItem>
         ) : !hasRepoScope ? (
           <DropdownMenuItem
-            className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+            className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
             onClick={() => void connect()}
             disabled={isConnecting}
           >
@@ -158,7 +158,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
           <>
             {changeCount > 0 ? (
               <DropdownMenuItem
-                className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+                className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
                 onClick={openGitPanel}
               >
                 <UploadIcon className="size-3.5" />
@@ -166,7 +166,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
-                className="text-[12px] text-[#9a9a9a] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+                className="text-[12px] text-ws-text-muted focus:bg-ws-hover focus:text-ws-text"
                 disabled
               >
                 <GitBranchIcon className="size-3.5" />
@@ -174,7 +174,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+              className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
               onClick={openGitPanel}
             >
               <GitBranchIcon className="size-3.5" />
@@ -182,7 +182,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
             </DropdownMenuItem>
             {project.githubRepoUrl ? (
               <DropdownMenuItem
-                className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+                className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
                 asChild
               >
                 <a
@@ -198,7 +198,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
           </>
         ) : (
           <DropdownMenuItem
-            className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+            className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
             onClick={onPublishToGitHub}
           >
             <CloudUploadIcon className="size-3.5" />
@@ -206,20 +206,37 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
           </DropdownMenuItem>
         )}
 
+        <DropdownMenuSeparator className="bg-ws-border" />
+        <DropdownMenuItem
+          className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
+          onClick={() => {
+            useWorkspaceStore.getState().openCloneFromGitHub();
+          }}
+        >
+          <Image
+            src="/images/github.png"
+            alt=""
+            width={14}
+            height={14}
+            className="size-3.5 opacity-80 dark:invert"
+          />
+          Clone from GitHub
+        </DropdownMenuItem>
+
         {!hasRepoScope && isConnected ? (
-          <p className="px-2 py-1.5 text-[10px] leading-relaxed text-[#787878]">
+          <p className="px-2 py-1.5 text-[10px] leading-relaxed text-ws-text-muted">
             {GITHUB_REPO_SCOPE_MESSAGE}
           </p>
         ) : null}
 
         {isGitHub && project.githubRepoUrl ? (
           <>
-            <DropdownMenuSeparator className="bg-[#4e5155]" />
-            <DropdownMenuLabel className="text-[11px] text-[#9a9a9a]">
+            <DropdownMenuSeparator className="bg-ws-border" />
+            <DropdownMenuLabel className="text-[11px] text-ws-text-muted">
               Deploy
             </DropdownMenuLabel>
             <DropdownMenuItem
-              className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+              className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
               asChild
             >
               <a
@@ -232,7 +249,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-[12px] focus:bg-[#3c3f41] focus:text-[#dfdfdf]"
+              className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
               asChild
             >
               <a

@@ -18,9 +18,9 @@ export function WorkspaceEditorPanel({
   const tabTitle = title ?? breadcrumb.at(-1)?.label ?? "Editor";
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-[#1e1f22]">
-      <div className="flex h-7 shrink-0 items-center border-b border-[#2b2d30] bg-[#2b2d30] px-3">
-        <p className="truncate text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
+    <main className="flex h-full min-h-0 flex-col bg-ws-bg">
+      <div className="flex h-7 shrink-0 items-center border-b border-ws-panel bg-ws-panel px-3">
+        <p className="truncate text-[11px] font-semibold tracking-wide text-ws-text">
           {tabTitle}
         </p>
       </div>

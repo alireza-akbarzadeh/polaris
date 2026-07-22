@@ -1,8 +1,9 @@
 "use client";
 
 import { FitAddon } from "@xterm/addon-fit";
-import { Terminal } from "@xterm/xterm";
-import { useCallback, useEffect, useRef } from "react";
+import { Terminal, type ITheme } from "@xterm/xterm";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 import { useInitializeGitRepo } from "@/features/github/hooks/use-initialize-git-repo";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -22,7 +23,7 @@ type WorkspaceTerminalProps = {
   projectId: string;
 };
 
-const TERMINAL_THEME = {
+const TERMINAL_THEME_DARK: ITheme = {
   background: "#1e1f22",
   foreground: "#bcbec4",
   cursor: "#bcbec4",
@@ -45,6 +46,29 @@ const TERMINAL_THEME = {
   brightWhite: "#dfdfdf",
 };
 
+const TERMINAL_THEME_LIGHT: ITheme = {
+  background: "#ffffff",
+  foreground: "#2b2d30",
+  cursor: "#2b2d30",
+  selectionBackground: "#dfe1e5",
+  black: "#2b2d30",
+  red: "#db3b3b",
+  green: "#548a3d",
+  yellow: "#9a7b0a",
+  blue: "#2470c0",
+  magenta: "#9b59b6",
+  cyan: "#1a7a7a",
+  white: "#5a5d63",
+  brightBlack: "#6c707e",
+  brightRed: "#db3b3b",
+  brightGreen: "#548a3d",
+  brightYellow: "#9a7b0a",
+  brightBlue: "#2470c0",
+  brightMagenta: "#9b59b6",
+  brightCyan: "#1a7a7a",
+  brightWhite: "#2b2d30",
+};
+
 export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -53,6 +77,15 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const cwdRef = useRef("/");
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
+
+  const { resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
+  const terminalTheme = isDark ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT;
 
   const project = useProject({ projectId });
   const files = useProjectFiles(projectId);
@@ -160,7 +193,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       fontFamily: "Consolas, 'Courier New', monospace",
       fontSize: 12,
       lineHeight: 1.2,
-      theme: TERMINAL_THEME,
+      theme: TERMINAL_THEME_DARK,
       scrollback: 2000,
     });
 
@@ -252,10 +285,18 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     };
   }, [executeCommand, writePrompt]);
 
+  useEffect(() => {
+    const term = terminalRef.current;
+    if (!term) {
+      return;
+    }
+    term.options.theme = terminalTheme;
+  }, [terminalTheme]);
+
   return (
-    <div className="flex h-full flex-col border-t border-[#1e1f22] bg-[#1e1f22]">
-      <div className="flex h-7 shrink-0 items-center border-b border-[#1e1f22] px-3">
-        <p className="text-[11px] font-semibold tracking-wide text-[#dfdfdf]">
+    <div className="flex h-full flex-col border-t border-ws-border-subtle bg-ws-bg">
+      <div className="flex h-7 shrink-0 items-center border-b border-ws-border-subtle px-3">
+        <p className="text-[11px] font-semibold tracking-wide text-ws-text">
           Terminal
         </p>
       </div>
