@@ -78,6 +78,10 @@ function WorkspaceAiChatSession({
 }) {
   const breadcrumb = useWorkspaceStore((s) => s.breadcrumb);
   const activeFile = breadcrumb.at(-1)?.label;
+  const [modelId, setModelId] = useState(POLARIS_CHAT_MODEL);
+  const [autoModel, setAutoModel] = useState(false);
+  const modelIdRef = useRef(modelId);
+  modelIdRef.current = modelId;
 
   const initialMessages = useMemo(
     () =>
@@ -91,13 +95,13 @@ function WorkspaceAiChatSession({
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: {
+        body: () => ({
           projectName,
           activeFile,
-          model: POLARIS_CHAT_MODEL,
-        },
+          model: autoModel ? POLARIS_CHAT_MODEL : modelIdRef.current,
+        }),
       }),
-    [projectName, activeFile],
+    [projectName, activeFile, autoModel],
   );
 
   const sessionRef = useRef(session);
@@ -334,6 +338,10 @@ function WorkspaceAiChatSession({
           projectId={projectId}
           projectName={projectName}
           status={status}
+          modelId={modelId}
+          onModelChange={setModelId}
+          autoModel={autoModel}
+          onAutoModelChange={setAutoModel}
           onSubmit={handleSubmit}
           onStop={() => void stop()}
         />

@@ -46,17 +46,20 @@ import {
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { SpeechInput } from "@/components/ai-elements/speech-input";
-import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { WorkspaceAiModelPicker } from "@/features/workspace/components/workspace-ai-model-picker";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
-import { POLARIS_CHAT_MODEL_LABEL } from "@/lib/ai/gemini-model";
 
 type WorkspaceAiChatInputProps = {
   projectId: string;
   projectName?: string;
   status: ChatStatus;
   disabled?: boolean;
+  modelId: string;
+  onModelChange: (modelId: string) => void;
+  autoModel?: boolean;
+  onAutoModelChange?: (auto: boolean) => void;
   onSubmit: (message: PromptInputMessage) => void | Promise<void>;
   onStop?: () => void;
 };
@@ -219,6 +222,10 @@ function PromptInputFields({
   projectName,
   status,
   disabled,
+  modelId,
+  onModelChange,
+  autoModel,
+  onAutoModelChange,
   onStop,
   mentionOpen,
   setMentionOpen,
@@ -361,12 +368,12 @@ function PromptInputFields({
             }}
           />
 
-          <Badge
-            variant="outline"
-            className="h-5 rounded-sm border-[#4e5155] bg-[#1e1f22] px-1.5 text-[9px] font-normal text-[#9a9a9a]"
-          >
-            {POLARIS_CHAT_MODEL_LABEL}
-          </Badge>
+          <WorkspaceAiModelPicker
+            value={modelId}
+            onChange={onModelChange}
+            auto={autoModel}
+            onAutoChange={onAutoModelChange}
+          />
         </PromptInputTools>
 
         <PromptInputSubmit

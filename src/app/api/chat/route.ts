@@ -2,7 +2,10 @@ import { google } from "@ai-sdk/google";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { z } from "zod";
 
-import { POLARIS_CHAT_MODEL } from "@/lib/ai/gemini-model";
+import {
+  isAllowedPolarisChatModel,
+  POLARIS_CHAT_MODEL,
+} from "@/lib/ai/gemini-model";
 
 const chatRequestSchema = z.object({
   messages: z.array(z.custom<UIMessage>()),
@@ -39,9 +42,11 @@ export async function POST(request: Request) {
   try {
     const body = chatRequestSchema.parse(await request.json());
     const { messages, projectName, activeFile, model } = body;
+    const selectedModel =
+      model && isAllowedPolarisChatModel(model) ? model : POLARIS_CHAT_MODEL;
 
     const result = streamText({
-      model: google(model ?? POLARIS_CHAT_MODEL),
+      model: google(selectedModel),
       system: buildSystemPrompt({ projectName, activeFile }),
       messages: await convertToModelMessages(messages),
     });
