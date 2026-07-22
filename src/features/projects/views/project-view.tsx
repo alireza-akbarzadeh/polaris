@@ -15,7 +15,7 @@ import { ThemeSection } from "@/features/projects/components/theme-sections";
 import { useCreateProject } from "@/features/projects/hooks/use-projects";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { adjectives, animals, colors, uniqueNamesGenerator } from "unique-names-generator";
 
 const display = Manrope({
@@ -29,6 +29,19 @@ const display = Manrope({
 export function ProjectView() {
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background text-foreground">
