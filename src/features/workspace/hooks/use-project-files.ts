@@ -46,3 +46,15 @@ export function useChangedFiles(projectId: string) {
     projectId: asProjectId(projectId),
   });
 }
+
+export function useSetFileStaged() {
+  return useMutation(api.projectFiles.setFileStaged);
+}
+
+export function useSetAllChangedStaged() {
+  return useMutation(api.projectFiles.setAllChangedStaged);
+}
+
+export function useDiscardFileChanges() {
+  return useMutation(api.projectFiles.discardFileChanges);
+}

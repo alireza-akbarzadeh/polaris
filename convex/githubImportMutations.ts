@@ -20,12 +20,15 @@ async function insertTreeNode(
   parentId?: Id<"projectFiles">,
 ) {
   const now = Date.now();
+  const content = node.kind === "file" ? (node.content ?? "") : undefined;
   const fileId = await ctx.db.insert("projectFiles", {
     projectId,
     name: node.name,
     parentId,
     kind: node.kind,
-    content: node.kind === "file" ? (node.content ?? "") : undefined,
+    content,
+    syncedContent: node.kind === "file" ? content : undefined,
+    staged: false,
     path: node.path,
     updatedAt: now,
   });

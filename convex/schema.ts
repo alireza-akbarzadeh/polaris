@@ -48,6 +48,10 @@ export default defineSchema({
     parentId: v.optional(v.id("projectFiles")),
     kind: v.union(v.literal("file"), v.literal("folder")),
     content: v.optional(v.string()),
+    /** Content last synced with GitHub (baseline for discard / change detection). */
+    syncedContent: v.optional(v.string()),
+    /** Whether the file is staged for the next commit. */
+    staged: v.optional(v.boolean()),
     path: v.string(),
     updatedAt: v.number(),
   })

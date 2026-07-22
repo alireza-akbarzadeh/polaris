@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { internalMutation, internalQuery } from "./_generated/server";
+import { isProjectFileChanged } from "./lib/projectFiles";
 
 export const getPushContext = internalQuery({
   args: {
@@ -17,14 +18,14 @@ export const getPushContext = internalQuery({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    const syncedAt = project.syncedAt ?? 0;
-    const changedFiles = files.filter(
-      (file) => file.kind === "file" && file.updatedAt > syncedAt,
+    const stagedFiles = files.filter(
+      (file) =>
+        isProjectFileChanged(file, project.syncedAt) && file.staged === true,
     );
 
     return {
       project,
-      changedFiles: changedFiles.map((file) => ({
+      changedFiles: stagedFiles.map((file) => ({
         path: file.path,
         content: file.content ?? "",
       })),
@@ -54,13 +55,33 @@ export const completePush = internalMutation({
   args: {
     projectId: v.id("projects"),
     commitSha: v.string(),
+    pushedPaths: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
+    const pathSet = new Set(args.pushedPaths);
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    for (const file of files) {
+      if (file.kind !== "file" || !pathSet.has(file.path)) {
+        continue;
+      }
+      await ctx.db.patch(file._id, {
+        syncedContent: file.content ?? "",
+        staged: false,
+        updatedAt: now,
+      });
+    }
+
     await ctx.db.patch(args.projectId, {
       exportStatus: "completed",
       lastCommitSha: args.commitSha,
-      syncedAt: Date.now(),
-      updatedAt: Date.now(),
+      syncedAt: now,
+      updatedAt: now,
     });
   },
 });

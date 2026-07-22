@@ -15,6 +15,7 @@ import {
   ListCollapseIcon,
   MoreHorizontalIcon,
   PencilIcon,
+  RefreshCwIcon,
   Trash2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -209,6 +210,12 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     setOpenFolderIds(new Set());
   }, []);
 
+  const refreshTree = useCallback(() => {
+    setCollapseKey((key) => key + 1);
+    setOpenFolderIds(new Set());
+    toast.success("File explorer refreshed");
+  }, []);
+
   const handleTreeKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
       if (!tree || renamingInputFocused()) {
@@ -380,6 +387,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
           onNewFile={() => startCreate("file")}
           onNewFolder={() => startCreate("folder")}
           onCollapseAll={collapseAll}
+          onRefresh={refreshTree}
         />
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -409,6 +417,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         onNewFile={() => startCreate("file")}
         onNewFolder={() => startCreate("folder")}
         onCollapseAll={collapseAll}
+        onRefresh={refreshTree}
       />
 
       <ContextMenu>
@@ -462,10 +471,12 @@ function TreeToolbar({
   onNewFile,
   onNewFolder,
   onCollapseAll,
+  onRefresh,
 }: {
   onNewFile: () => void;
   onNewFolder: () => void;
   onCollapseAll: () => void;
+  onRefresh: () => void;
 }) {
   return (
     <div className="flex items-center gap-0.5 border-b border-[#1e1f22] px-1 py-1">
@@ -477,6 +488,9 @@ function TreeToolbar({
       </TreeToolbarButton>
       <TreeToolbarButton label="Collapse All" onClick={onCollapseAll}>
         <ListCollapseIcon className="size-3.5" />
+      </TreeToolbarButton>
+      <TreeToolbarButton label="Refresh" onClick={onRefresh}>
+        <RefreshCwIcon className="size-3.5" />
       </TreeToolbarButton>
     </div>
   );

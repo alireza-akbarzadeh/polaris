@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as github from "../github.js";
 import type * as githubActions from "../githubActions.js";
+import type * as githubHistory from "../githubHistory.js";
 import type * as githubImport from "../githubImport.js";
 import type * as githubImportMutations from "../githubImportMutations.js";
 import type * as githubInit from "../githubInit.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   github: typeof github;
   githubActions: typeof githubActions;
+  githubHistory: typeof githubHistory;
   githubImport: typeof githubImport;
   githubImportMutations: typeof githubImportMutations;
   githubInit: typeof githubInit;

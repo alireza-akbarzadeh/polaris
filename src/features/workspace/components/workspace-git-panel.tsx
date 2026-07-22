@@ -16,6 +16,7 @@ import { useProject } from "@/features/projects/hooks/use-projects";
 import { GitHubConnectionStatus } from "@/features/github/components/github-connection-status";
 import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
+import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
@@ -24,10 +25,11 @@ type WorkspaceGitPanelProps = {
   projectId: string;
 };
 
-type GitTab = "changes" | "info";
+type GitTab = "changes" | "history" | "info";
 
 const GIT_TABS: { id: GitTab; label: string }[] = [
   { id: "changes", label: "Changes" },
+  { id: "history", label: "History" },
   { id: "info", label: "Info" },
 ];
 
@@ -49,8 +51,12 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 
   const isGitHub = project.source === "github" && project.githubRepoUrl;
   const changeCount = changedFiles?.length ?? 0;
+  const stagedCount = changedFiles?.filter((file) => file.staged).length ?? 0;
   const canPush =
-    isGitHub && changeCount > 0 && commitMessage.trim().length > 0 && !isPushing;
+    isGitHub &&
+    stagedCount > 0 &&
+    commitMessage.trim().length > 0 &&
+    !isPushing;
 
   const onCommitAndPush = async () => {
     if (!canPush) return;
@@ -116,9 +122,15 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                     <>
                       <UploadIcon className="size-3.5" />
                       Commit &amp; Push
+                      {stagedCount > 0 ? ` (${stagedCount})` : ""}
                     </>
                   )}
                 </Button>
+                {changeCount > 0 && stagedCount === 0 ? (
+                  <p className="text-[10px] text-[#787878]">
+                    Stage files below before committing.
+                  </p>
+                ) : null}
               </>
             ) : (
               <InitializeRepositoryPrompt />
@@ -127,6 +139,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           <div className="min-h-0 flex-1 overflow-auto">
             <WorkspaceChangeList
               projectId={projectId}
+              interactive={Boolean(isGitHub)}
               emptyMessage={
                 isGitHub
                   ? "No local changes since last GitHub sync"
@@ -135,6 +148,11 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
             />
           </div>
         </div>
+      ) : activeTab === "history" ? (
+        <WorkspaceGitHistory
+          projectId={projectId}
+          enabled={Boolean(isGitHub)}
+        />
       ) : (
         <GitInfoTab project={project} isGitHub={Boolean(isGitHub)} />
       )}

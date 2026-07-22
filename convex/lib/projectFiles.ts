@@ -28,6 +28,27 @@ export async function touchProject(
   await ctx.db.patch(projectId, { updatedAt: Date.now() });
 }
 
+export function isProjectFileChanged(
+  file: {
+    kind: "file" | "folder";
+    content?: string;
+    syncedContent?: string;
+    updatedAt: number;
+  },
+  syncedAt: number | undefined,
+): boolean {
+  if (file.kind !== "file") {
+    return false;
+  }
+
+  if (file.syncedContent !== undefined) {
+    return (file.content ?? "") !== file.syncedContent;
+  }
+
+  // Legacy projects without syncedContent baselines.
+  return syncedAt !== undefined && file.updatedAt > syncedAt;
+}
+
 export async function deleteFolderRecursive(
   ctx: MutationCtx,
   folderId: Id<"projectFiles">,
@@ -152,13 +173,16 @@ async function seedNode(
   const isFile = Boolean(node.path);
   const path = node.path ?? buildPath(parentPath, node.name);
   const now = Date.now();
+  const content = isFile ? DEFAULT_FILE_CONTENT[path] ?? "" : undefined;
 
   const id = await ctx.db.insert("projectFiles", {
     projectId,
     name: node.name,
     parentId,
     kind: isFile ? "file" : "folder",
-    content: isFile ? DEFAULT_FILE_CONTENT[path] ?? "" : undefined,
+    content,
+    syncedContent: isFile ? content : undefined,
+    staged: false,
     path,
     updatedAt: now,
   });

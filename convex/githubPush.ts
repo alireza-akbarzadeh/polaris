@@ -60,7 +60,9 @@ export const commitAndPush = action({
     }
 
     if (changedFiles.length === 0) {
-      throw new Error("No changes to commit");
+      throw new Error(
+        "No staged changes to commit. Stage files in the Git panel first.",
+      );
     }
 
     const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
@@ -128,6 +130,7 @@ export const commitAndPush = action({
       await ctx.runMutation(internal.githubPushMutations.completePush, {
         projectId: args.projectId,
         commitSha: newCommit.sha,
+        pushedPaths: changedFiles.map((file) => file.path),
       });
 
       return {

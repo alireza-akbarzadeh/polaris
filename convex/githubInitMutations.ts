@@ -63,14 +63,29 @@ export const linkRepository = internalMutation({
     commitSha: v.string(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    for (const file of files) {
+      if (file.kind !== "file") continue;
+      await ctx.db.patch(file._id, {
+        syncedContent: file.content ?? "",
+        staged: false,
+        updatedAt: now,
+      });
+    }
+
     await ctx.db.patch(args.projectId, {
       source: "github",
       githubRepoUrl: args.githubRepoUrl,
       githubBranch: args.githubBranch,
       lastCommitSha: args.commitSha,
-      syncedAt: Date.now(),
+      syncedAt: now,
       exportStatus: "completed",
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
   },
 });
