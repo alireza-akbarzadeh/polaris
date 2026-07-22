@@ -1,6 +1,6 @@
 "use client";
 
-import { ClerkProvider, useAuth, UserButton } from "@clerk/nextjs";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import {
   Authenticated,
@@ -31,7 +31,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           <Authenticated>
-            <UserButton />
             {children}
           </Authenticated>
           <Unauthenticated>

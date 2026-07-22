@@ -1,5 +1,5 @@
 
-import { ProjectView } from "@/features/projects/components/project-view";
+import { ProjectView } from "@/features/projects/views/project-view";
 
 export default function Home() {
   return (

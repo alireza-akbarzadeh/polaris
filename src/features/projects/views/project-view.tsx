@@ -9,10 +9,13 @@ import { Manrope } from "next/font/google";
 import Image from "next/image";
 
 import { ProjectActionRow } from "@/features/projects/components/project-action-row";
+import { ProjectCommandDialog } from "@/features/projects/components/project-command-dialog";
 import { ProjectList } from "@/features/projects/components/project-list";
 import { ThemeSection } from "@/features/projects/components/theme-sections";
 import { useCreateProject } from "@/features/projects/hooks/use-projects";
 import { cn } from "@/lib/utils";
+import { UserButton } from "@clerk/nextjs";
+import { useState } from "react";
 import { adjectives, animals, colors, uniqueNamesGenerator } from "unique-names-generator";
 
 const display = Manrope({
@@ -25,6 +28,8 @@ const display = Manrope({
 
 export function ProjectView() {
   const createProject = useCreateProject();
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background text-foreground">
       <div
@@ -133,18 +138,19 @@ export function ProjectView() {
             </section>
 
             <section className="flex min-h-80 flex-col p-5 md:min-h-105 md:p-6">
-              <ProjectList onViewAll={() => { }} />
+              <ProjectList onViewAll={() => setOpen(true)} />
             </section>
           </div>
 
           <footer className="flex items-center justify-between border-t border-border/60 px-6 py-2.5 text-[11px] text-muted-foreground">
+            <UserButton />
             <span className="inline-flex items-center gap-1.5">
               <Image
                 src="/images/github.png"
                 alt=""
                 width={12}
                 height={12}
-                className="size-3 opacity-70 dark:invert"
+                className="size-5 opacity-70 dark:invert"
               />
               Connected via Clerk
             </span>
@@ -152,6 +158,7 @@ export function ProjectView() {
           </footer>
         </div>
       </motion.div>
+      <ProjectCommandDialog open={open} onOpenChange={setOpen} />
     </div>
   );
 }
