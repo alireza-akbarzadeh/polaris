@@ -30,7 +30,7 @@ type ActivityItem = {
 const ACTIVITY_ITEMS: ActivityItem[] = [
   {
     view: "explorer",
-    label: "Project",
+    label: "Explorer",
     icon: <FolderTreeIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘1",
   },

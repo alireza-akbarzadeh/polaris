@@ -1,7 +1,7 @@
 "use client";
 
 import { WorkspaceActivityBar } from "@/features/workspace/components/workspace-activity-bar";
-import { WorkspaceFileTree } from "@/features/workspace/components/workspace-file-tree";
+import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
 import { WorkspaceGitPanel } from "@/features/workspace/components/workspace-git-panel";
 import { WorkspaceSearchPanel } from "@/features/workspace/components/workspace-search-panel";
 import {
@@ -27,7 +27,7 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
         </div>
         <div className="flex-1 overflow-hidden">
           {leftPanelView === "explorer" ? (
-            <WorkspaceFileTree projectId={projectId} />
+            <WorkspaceExplorerPanel projectId={projectId} />
           ) : null}
           {leftPanelView === "search" ? (
             <WorkspaceSearchPanel projectId={projectId} />

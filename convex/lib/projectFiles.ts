@@ -186,4 +186,6 @@ export async function seedDefaultProjectFiles(
   for (const node of DEFAULT_FILE_TREE) {
     await seedNode(ctx, projectId, node, undefined, undefined);
   }
+
+  await ctx.db.patch(projectId, { syncedAt: Date.now() });
 }

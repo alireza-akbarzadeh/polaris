@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  FolderTreeIcon,
+  GitBranchIcon,
   PanelBottomIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  SearchIcon,
   SettingsIcon,
 } from "lucide-react";
 
@@ -78,6 +81,55 @@ export function WorkspaceSettingsDialog() {
             <PanelRightIcon />
             <span>{aiPanelOpen ? "Hide AI" : "Show AI"}</span>
             <CommandShortcut>⌘L</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Navigation">
+          <CommandItem
+            value="go to file"
+            onSelect={() => {
+              runCommand("openGoToFile");
+              closeSettings();
+            }}
+          >
+            <FolderTreeIcon />
+            <span>Go to File</span>
+            <CommandShortcut>⌘P</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="find in files search"
+            onSelect={() => {
+              runCommand("showSearch");
+              closeSettings();
+            }}
+          >
+            <SearchIcon />
+            <span>Find in Files</span>
+            <CommandShortcut>⌘⇧F</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="show git panel"
+            onSelect={() => {
+              runCommand("showGit");
+              closeSettings();
+            }}
+          >
+            <GitBranchIcon />
+            <span>Show Git</span>
+            <CommandShortcut>⌘9</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="show project explorer"
+            onSelect={() => {
+              runCommand("showExplorer");
+              closeSettings();
+            }}
+          >
+            <FolderTreeIcon />
+            <span>Show Project</span>
+            <CommandShortcut>⌘1</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

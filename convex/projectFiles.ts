@@ -23,6 +23,35 @@ export const listByProject = query({
   },
 });
 
+export const listChangedFiles = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const project = await verifyProjectAccess(ctx, args.projectId);
+    if (!project.syncedAt) {
+      return [];
+    }
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return files
+      .filter(
+        (file) => file.kind === "file" && file.updatedAt > project.syncedAt!,
+      )
+      .map((file) => ({
+        _id: file._id,
+        path: file.path,
+        name: file.name,
+        updatedAt: file.updatedAt,
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
 export const getByPath = query({
   args: {
     projectId: v.id("projects"),

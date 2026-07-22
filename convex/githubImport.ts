@@ -5,10 +5,8 @@ import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
-import { action, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import {
-  buildFileTree,
   getClerkGitHubToken,
   MAX_FILE_BYTES,
   MAX_IMPORT_FILES,
@@ -16,14 +14,6 @@ import {
   shouldIgnorePath,
   type GitHubImportFile,
 } from "./lib/github";
-
-type TreeNode = {
-  name: string;
-  path: string;
-  kind: "file" | "folder";
-  content?: string;
-  children: Map<string, TreeNode>;
-};
 
 async function fetchRepoFiles(
   token: string,
@@ -93,94 +83,6 @@ async function fetchRepoFiles(
   return { files, commitSha };
 }
 
-async function insertTreeNode(
-  ctx: MutationCtx,
-  projectId: Id<"projects">,
-  node: TreeNode,
-  parentId?: Id<"projectFiles">,
-) {
-  const now = Date.now();
-  const fileId = await ctx.db.insert("projectFiles", {
-    projectId,
-    name: node.name,
-    parentId,
-    kind: node.kind,
-    content: node.kind === "file" ? (node.content ?? "") : undefined,
-    path: node.path,
-    updatedAt: now,
-  });
-
-  if (node.kind === "folder") {
-    for (const child of node.children.values()) {
-      await insertTreeNode(ctx, projectId, child, fileId);
-    }
-  }
-}
-
-export const createImportProject = internalMutation({
-  args: {
-    ownerId: v.string(),
-    name: v.string(),
-    githubRepoUrl: v.string(),
-    githubBranch: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("projects", {
-      name: args.name,
-      ownerId: args.ownerId,
-      updatedAt: Date.now(),
-      importStatus: "importing",
-      githubRepoUrl: args.githubRepoUrl,
-      githubBranch: args.githubBranch,
-      source: "github",
-    });
-  },
-});
-
-export const importFiles = internalMutation({
-  args: {
-    projectId: v.id("projects"),
-    files: v.array(
-      v.object({
-        path: v.string(),
-        content: v.string(),
-      }),
-    ),
-  },
-  handler: async (ctx, args) => {
-    const tree = buildFileTree(args.files);
-    for (const child of tree.children.values()) {
-      await insertTreeNode(ctx, args.projectId, child);
-    }
-  },
-});
-
-export const completeImport = internalMutation({
-  args: {
-    projectId: v.id("projects"),
-    commitSha: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.projectId, {
-      importStatus: "completed",
-      lastCommitSha: args.commitSha,
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-export const failImport = internalMutation({
-  args: {
-    projectId: v.id("projects"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.projectId, {
-      importStatus: "failed",
-      updatedAt: Date.now(),
-    });
-  },
-});
-
 export const cloneFromGitHub = action({
   args: {
     repoUrl: v.string(),
@@ -203,12 +105,15 @@ export const cloneFromGitHub = action({
     const { owner, repo } = parseRepoUrl(args.repoUrl);
     const branch = args.branch?.trim() || "main";
 
-    const projectId = await ctx.runMutation(internal.githubImport.createImportProject, {
-      ownerId: identity.subject,
-      name: args.name?.trim() || repo,
-      githubRepoUrl: `${owner}/${repo}`,
-      githubBranch: branch,
-    });
+    const projectId = await ctx.runMutation(
+      internal.githubImportMutations.createImportProject,
+      {
+        ownerId: identity.subject,
+        name: args.name?.trim() || repo,
+        githubRepoUrl: `${owner}/${repo}`,
+        githubBranch: branch,
+      },
+    );
 
     try {
       const { files, commitSha } = await fetchRepoFiles(
@@ -222,18 +127,20 @@ export const cloneFromGitHub = action({
         throw new Error("No importable files found in this repository.");
       }
 
-      await ctx.runMutation(internal.githubImport.importFiles, {
+      await ctx.runMutation(internal.githubImportMutations.importFiles, {
         projectId,
         files,
       });
-      await ctx.runMutation(internal.githubImport.completeImport, {
+      await ctx.runMutation(internal.githubImportMutations.completeImport, {
         projectId,
         commitSha,
       });
 
       return projectId;
     } catch (error) {
-      await ctx.runMutation(internal.githubImport.failImport, { projectId });
+      await ctx.runMutation(internal.githubImportMutations.failImport, {
+        projectId,
+      });
       throw error;
     }
   },

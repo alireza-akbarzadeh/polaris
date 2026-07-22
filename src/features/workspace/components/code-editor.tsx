@@ -1,11 +1,14 @@
 "use client";
 
-import { javascript } from "@codemirror/lang-javascript";
 import { EditorView } from "@codemirror/view";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import CodeMirror from "@uiw/react-codemirror";
 import { useMemo } from "react";
 
+import {
+  languageExtensionForPath,
+  supportsAiSuggestion,
+} from "@/features/workspace/lib/editor-languages";
 import { customSetup } from "@/lib/custom-setup";
 import { suggestion } from "@/lib/suggestion-extension";
 
@@ -23,16 +26,6 @@ const editorFontTheme = EditorView.theme({
     fontSize: "14px",
   },
 });
-
-function languageExtension(filePath: string) {
-  if (/\.(tsx?|jsx?)$/.test(filePath)) {
-    return javascript({
-      typescript: /\.tsx?$/.test(filePath),
-      jsx: /\.jsx?$/.test(filePath),
-    });
-  }
-  return [];
-}
 
 function fileNameFromPath(filePath: string) {
   const parts = filePath.split("/");
@@ -55,12 +48,9 @@ export function CodeEditor({
   const fileName = fileNameFromPath(filePath);
 
   const extensions = useMemo(() => {
-    const base = [
-      customSetup,
-      languageExtension(filePath),
-    ];
+    const base = [customSetup, ...languageExtensionForPath(filePath)];
 
-    if (readOnly) {
+    if (readOnly || !supportsAiSuggestion(filePath)) {
       return base;
     }
 

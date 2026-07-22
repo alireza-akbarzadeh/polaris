@@ -56,7 +56,7 @@ export const DEFAULT_WORKSPACE_PREFS: WorkspacePrefs = {
 };
 
 export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
-  explorer: "Project",
+  explorer: "Explorer",
   search: "Find in Files",
   git: "Git",
 };

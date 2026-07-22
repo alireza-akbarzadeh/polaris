@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 
 export function useGitHubConnection() {
   const connection = useQuery(api.github.getConnection);
-  const syncConnection = useAction(api.github.syncConnection);
+  const syncConnection = useAction(api.githubActions.syncConnection);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const hasSynced = useRef(false);
@@ -47,7 +47,7 @@ export function useGitHubConnection() {
 
 export function useConnectGitHub() {
   const { user, isLoaded } = useUser();
-  const syncConnection = useAction(api.github.syncConnection);
+  const syncConnection = useAction(api.githubActions.syncConnection);
   const [isConnecting, setIsConnecting] = useState(false);
 
   const connect = useCallback(async () => {

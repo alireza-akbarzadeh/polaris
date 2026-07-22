@@ -12,11 +12,12 @@ import {
   ChevronRightIcon,
   FilePlusIcon,
   FolderPlusIcon,
+  ListCollapseIcon,
+  MoreHorizontalIcon,
   PencilIcon,
-  RefreshCwIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -37,6 +38,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
@@ -124,7 +132,21 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
 
   if (tree?.length === 0) {
     return (
-      <p className="px-3 py-2 text-[11px] text-[#787878]">No files yet</p>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="flex h-full min-h-24 items-center justify-center p-3">
+            <p className="text-[11px] text-[#787878]">No files yet</p>
+          </div>
+        </ContextMenuTrigger>
+        <FileTreeMenuContent
+          isFolder
+          showItemActions={false}
+          onNewFile={() => void onNewFile()}
+          onNewFolder={() => void onNewFolder()}
+          onRename={() => {}}
+          onDelete={() => {}}
+        />
+      </ContextMenu>
     );
   }
 
@@ -147,22 +169,44 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
           label="Collapse All"
           onClick={() => setCollapseKey((k) => k + 1)}
         >
-          <RefreshCwIcon className="size-3.5" />
+          <ListCollapseIcon className="size-3.5" />
         </TreeToolbarButton>
       </div>
 
-      <nav
-        aria-label="Project files"
-        className="flex-1 overflow-auto p-1.5"
-        key={collapseKey}
-      >
-        {tree?.map((node) => (
-          <FileTreeItem
-            key={node.id}
-            node={node}
-            projectId={projectId}
-            depth={0}
-            defaultOpen={collapseKey === 0}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <nav
+            aria-label="Project files"
+            className="flex-1 overflow-auto p-1.5"
+            key={collapseKey}
+          >
+            {tree?.map((node) => (
+              <FileTreeItem
+                key={node.id}
+                node={node}
+                projectId={projectId}
+                depth={0}
+                defaultOpen={collapseKey === 0}
+                onNewFile={onNewFile}
+                onNewFolder={onNewFolder}
+              />
+            ))}
+          </nav>
+        </ContextMenuTrigger>
+        <FileTreeMenuContent
+          isFolder
+          showItemActions={false}
+          onNewFile={() => void onNewFile()}
+          onNewFolder={() => void onNewFolder()}
+          onRename={() => {}}
+          onDelete={() => {}}
+        />
+      </ContextMenu>
+    </div>
+  );
+}
+
+function TreeToolbarButton({
   label,
   onClick,
   children,
@@ -183,6 +227,70 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     >
       {children}
     </Button>
+  );
+}
+
+type FileTreeMenuContentProps = {
+  isFolder: boolean;
+  onNewFile: () => void;
+  onNewFolder: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  menuType?: "context" | "dropdown";
+  showItemActions?: boolean;
+};
+
+function FileTreeMenuContent({
+  isFolder,
+  onNewFile,
+  onNewFolder,
+  onRename,
+  onDelete,
+  menuType = "context",
+  showItemActions = true,
+}: FileTreeMenuContentProps) {
+  const itemClassName = "text-[12px] focus:bg-[#4e5155] focus:text-[#dfdfdf]";
+  const destructiveClassName =
+    "text-[12px] focus:bg-[#5c2b29] focus:text-[#ff6b68]";
+
+  const Item = menuType === "dropdown" ? DropdownMenuItem : ContextMenuItem;
+  const Separator =
+    menuType === "dropdown" ? DropdownMenuSeparator : ContextMenuSeparator;
+  const Content =
+    menuType === "dropdown" ? DropdownMenuContent : ContextMenuContent;
+
+  return (
+    <Content className="min-w-44 border-[#4e5155] bg-[#3c3f41] text-[#dfdfdf]">
+      {isFolder ? (
+        <>
+          <Item onClick={onNewFile} className={itemClassName}>
+            <FilePlusIcon className="size-3.5" />
+            New File
+          </Item>
+          <Item onClick={onNewFolder} className={itemClassName}>
+            <FolderPlusIcon className="size-3.5" />
+            New Folder
+          </Item>
+          <Separator className="bg-[#4e5155]" />
+        </>
+      ) : null}
+      {showItemActions ? (
+        <>
+          <Item onClick={onRename} className={itemClassName}>
+            <PencilIcon className="size-3.5" />
+            Rename
+          </Item>
+          <Item
+            variant={menuType === "context" ? "destructive" : undefined}
+            onClick={onDelete}
+            className={destructiveClassName}
+          >
+            <Trash2Icon className="size-3.5" />
+            Delete
+          </Item>
+        </>
+      ) : null}
+    </Content>
   );
 }
 
@@ -212,6 +320,7 @@ function FileTreeItem({
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(node.name);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const isFolder = node.kind === "folder";
@@ -272,12 +381,20 @@ function FileTreeItem({
     }
   };
 
-  const rowContent = isFolder ? (
-  <button
+  const menuProps = {
+    isFolder,
+    onNewFile: () => onNewFile(isFolder ? node.id : undefined),
+    onNewFolder: () => onNewFolder(isFolder ? node.id : undefined),
+    onRename: startRename,
+    onDelete: () => setDeleteOpen(true),
+  };
+
+  const rowInner = isFolder ? (
+    <button
       type="button"
       onClick={() => setOpen((value) => !value)}
       onDoubleClick={startRename}
-      className="flex w-full min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-2 text-left text-[12px] text-[#bcbec4] hover:bg-[#3c3f41]"
+      className="flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] text-[#bcbec4] hover:bg-[#3c3f41]"
       style={{ paddingLeft: `${8 + depth * 12}px` }}
     >
       {open ? (
@@ -306,7 +423,7 @@ function FileTreeItem({
     </button>
   ) : renaming ? (
     <div
-      className="flex items-center gap-1 py-0.5 pr-2"
+      className="flex min-w-0 flex-1 items-center gap-1 py-0.5 pr-1"
       style={{ paddingLeft: `${20 + depth * 12}px` }}
     >
       <span className="size-3.5 shrink-0 [&_svg]:size-full">
@@ -328,7 +445,7 @@ function FileTreeItem({
         startRename();
       }}
       className={cn(
-        "flex items-center gap-1 rounded-sm py-0.5 pr-2 text-[12px] transition-colors",
+        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-[12px] transition-colors",
         active
           ? "bg-[#3c3f41] text-[#dfdfdf]"
           : "text-[#9a9a9a] hover:bg-[#3c3f41] hover:text-[#dfdfdf]",
@@ -346,44 +463,36 @@ function FileTreeItem({
     <div>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="outline-none">{rowContent}</div>
+          <div
+            className={cn(
+              "group flex items-center rounded-sm",
+              (menuOpen || active) && "bg-[#3c3f41]/60",
+            )}
+          >
+            {rowInner}
+            {!renaming ? (
+              <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Actions for ${node.name}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "mr-0.5 size-5 shrink-0 rounded-sm text-[#afb1b3] opacity-0 hover:bg-[#4e5155] hover:text-[#dfdfdf] group-hover:opacity-100",
+                      menuOpen && "opacity-100",
+                    )}
+                  >
+                    <MoreHorizontalIcon className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <FileTreeMenuContent {...menuProps} menuType="dropdown" />
+              </DropdownMenu>
+            ) : null}
+          </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="min-w-44 border-[#4e5155] bg-[#3c3f41] text-[#dfdfdf]">
-          {isFolder ? (
-            <>
-              <ContextMenuItem
-                onClick={() => onNewFile(node.id)}
-                className="text-[12px] focus:bg-[#4e5155] focus:text-[#dfdfdf]"
-              >
-                <FilePlusIcon className="size-3.5" />
-                New File
-              </ContextMenuItem>
-              <ContextMenuItem
-                onClick={() => onNewFolder(node.id)}
-                className="text-[12px] focus:bg-[#4e5155] focus:text-[#dfdfdf]"
-              >
-                <FolderPlusIcon className="size-3.5" />
-                New Folder
-              </ContextMenuItem>
-              <ContextMenuSeparator className="bg-[#4e5155]" />
-            </>
-          ) : null}
-          <ContextMenuItem
-            onClick={startRename}
-            className="text-[12px] focus:bg-[#4e5155] focus:text-[#dfdfdf]"
-          >
-            <PencilIcon className="size-3.5" />
-            Rename
-          </ContextMenuItem>
-          <ContextMenuItem
-            variant="destructive"
-            onClick={() => setDeleteOpen(true)}
-            className="text-[12px] focus:bg-[#5c2b29] focus:text-[#ff6b68]"
-          >
-            <Trash2Icon className="size-3.5" />
-            Delete
-          </ContextMenuItem>
-        </ContextMenuContent>
+        <FileTreeMenuContent {...menuProps} menuType="context" />
       </ContextMenu>
 
       {isFolder && open

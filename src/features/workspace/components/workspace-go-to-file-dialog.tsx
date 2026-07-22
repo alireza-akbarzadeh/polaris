@@ -13,7 +13,6 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
-import { fuzzyMatchFile } from "@/features/workspace/lib/search";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 type WorkspaceGoToFileDialogProps = {
@@ -67,13 +66,9 @@ export function WorkspaceGoToFileDialog({
           {filePaths.map((path) => (
             <CommandItem
               key={path}
-              value={path}
-              keywords={[path]}
+              value={`${path} ${path.replace(/\//g, " ")}`}
               onSelect={() => onSelect(path)}
-              className="gap--2 py-2 text-[#bcbec4] data-[selected=true]:bg-[#3c3f41] data-[selected=true]:text-[#dfdfdf]"
-              filter={(value, search) =>
-                fuzzyMatchFile(search, value) ? 1 : 0
-              }
+              className="gap-2 py-2 text-[#bcbec4] data-[selected=true]:bg-[#3c3f41] data-[selected=true]:text-[#dfdfdf]"
             >
               <span className="size-4 shrink-0 [&_svg]:size-full">
                 <FileIcon

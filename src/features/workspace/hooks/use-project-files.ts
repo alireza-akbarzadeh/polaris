@@ -40,3 +40,9 @@ export function useRenameProjectFile() {
 export function useDeleteProjectFile() {
   return useMutation(api.projectFiles.remove);
 }
+
+export function useChangedFiles(projectId: string) {
+  return useQuery(api.projectFiles.listChangedFiles, {
+    projectId: asProjectId(projectId),
+  });
+}

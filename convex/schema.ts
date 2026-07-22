@@ -25,6 +25,7 @@ export default defineSchema({
     githubRepoUrl: v.optional(v.string()),
     githubBranch: v.optional(v.string()),
     lastCommitSha: v.optional(v.string()),
+    syncedAt: v.optional(v.number()),
     source: v.optional(
       v.union(v.literal("blank"), v.literal("github")),
     ),
