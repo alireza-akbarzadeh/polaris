@@ -1,6 +1,6 @@
 "use client";
 
-import { ClerkProvider, SignIn, useAuth, UserButton } from "@clerk/nextjs";
+import { ClerkProvider, useAuth, UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import {
   Authenticated,
@@ -9,10 +9,10 @@ import {
   Unauthenticated,
 } from "convex/react";
 
+import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
+import { UnauthenticatedView } from "@/features/auth/components/unauthenticated-view";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import ThemeProvider from "./theme-provider";
-import { UnauthenticatedView } from "@/features/auth/components/unathenticated-view";
-import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -25,9 +25,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <ThemeProvider
-          defaultTheme="dark"
           attribute="class"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <Authenticated>
@@ -38,7 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <UnauthenticatedView />
           </Unauthenticated>
           <AuthLoading>
-            <AuthLoadingView/>
+            <AuthLoadingView />
           </AuthLoading>
         </ThemeProvider>
       </ConvexProviderWithClerk>

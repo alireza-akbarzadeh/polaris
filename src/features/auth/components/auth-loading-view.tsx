@@ -7,12 +7,9 @@ export function AuthLoadingView() {
         Polaris — Code Editor
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-4">
-        <Spinner className="size-5 text-[#007acc]" />
+        <Spinner className="size-5" />
         <p className="text-sm text-[#858585]">Initializing workspace…</p>
       </div>
-      <footer className="flex h-[22px] shrink-0 items-center bg-[#007acc] px-3 text-[12px] text-white">
-        Loading authentication
-      </footer>
     </div>
   );
 }

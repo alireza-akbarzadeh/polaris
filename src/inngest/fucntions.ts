@@ -1,6 +1,6 @@
-import { inngest } from "./client";
-import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+import { inngest } from "./client";
 
 export const blocking = inngest.createFunction(
   {
