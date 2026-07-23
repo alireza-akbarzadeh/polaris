@@ -38,12 +38,10 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   );
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
   const isDarkRef = useRef(isDark);
-  isDarkRef.current = isDark;
 
   const { projectName, getContext, createHandlers, filesRef } =
     useTerminalShell(projectId);
   const projectNameRef = useRef(projectName);
-  projectNameRef.current = projectName;
 
   const terminalCwdRequest = useWorkspaceStore((s) => s.terminalCwdRequest);
   const clearTerminalCwdRequest = useWorkspaceStore(
@@ -53,8 +51,6 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   // Stable refs so the xterm session is created once
   const getContextRef = useRef(getContext);
   const createHandlersRef = useRef(createHandlers);
-  getContextRef.current = getContext;
-  createHandlersRef.current = createHandlers;
 
   useEffect(() => {
     if (!terminalCwdRequest) return;
@@ -79,7 +75,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: "Dank Mono, Consolas, 'Courier New', monospace",
+      fontFamily:
+        "var(--font-editor-mono), Consolas, 'Courier New', monospace",
       fontSize: 13,
       lineHeight: 1.35,
       theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,

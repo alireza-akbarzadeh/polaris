@@ -8,9 +8,10 @@ import {
 import { Manrope } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, type ReactNode } from "react";
 
 import { AppUserButton } from "@/features/billing/components/app-user-button";
-import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
+import { PricingSection } from "@/features/billing/components/pricing-section";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { cn } from "@/lib/utils";
 
@@ -43,8 +44,74 @@ const FEATURES = [
   },
 ] as const;
 
+const WORKFLOW_STEPS = [
+  {
+    n: "01",
+    t: "Open a workspace",
+    d: "Create a project or clone from GitHub. Polaris boots the editor, file tree, and terminal together.",
+  },
+  {
+    n: "02",
+    t: "Describe intent",
+    d: "Chat with the assistant against your open files, or select code and ask for a focused change.",
+  },
+  {
+    n: "03",
+    t: "Review the diff",
+    d: "Accept edits in the editor, inspect git status, and keep history visible without leaving the tab.",
+  },
+  {
+    n: "04",
+    t: "Ship from the browser",
+    d: "Commit, publish, and run commands in the workspace terminal — same surface end to end.",
+  },
+] as const;
+
+const CAPABILITIES = [
+  { k: "AI chat", v: "Context from open files & project tree" },
+  { k: "Code editor", v: "Monaco with multi-file tabs" },
+  { k: "Git", v: "Status, history, commit, publish" },
+  { k: "Terminal", v: "Workspace shell next to the editor" },
+] as const;
+
+const FAQS = [
+  {
+    q: "Does Polaris send my code to the cloud?",
+    a: "Your workspace runs in the browser against your project storage. AI features use the models configured for your plan — review Clerk Billing entitlements for what’s included.",
+  },
+  {
+    q: "Do I need to install anything?",
+    a: "No desktop app. Sign in, open a project, and the editor, Git tools, and terminal load in the browser.",
+  },
+  {
+    q: "Can I clone from GitHub?",
+    a: "Yes. Connect GitHub and clone a repository into a Polaris workspace, then edit and publish from the same UI.",
+  },
+  {
+    q: "How does pricing work?",
+    a: "Plans are managed with Clerk Billing. Scroll to Pricing below — the live table shows current tiers and opens checkout when you pick one.",
+  },
+  {
+    q: "What happens after I subscribe?",
+    a: "Checkout completes in Clerk’s drawer. You’re redirected to projects, and Pro entitlements unlock features gated by your plan.",
+  },
+] as const;
+
+function PricingLink({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <a href="#pricing" className={className}>
+      {children}
+    </a>
+  );
+}
+
 function Nav() {
-  const { openPricing } = usePricingDialog();
   const { openProjects } = useProjectsDialog();
 
   return (
@@ -72,22 +139,15 @@ function Nav() {
           <a href="#engine" className="transition-colors hover:text-white">
             Engine
           </a>
-          <a href="#context" className="transition-colors hover:text-white">
-            Context
-          </a>
-          <a
-            href="#performance"
-            className="transition-colors hover:text-white"
-          >
+          <a href="#workflow" className="transition-colors hover:text-white">
             Workflow
           </a>
-          <button
-            type="button"
-            onClick={() => openPricing()}
-            className="transition-colors hover:text-white"
-          >
+          <a href="#faq" className="transition-colors hover:text-white">
+            FAQ
+          </a>
+          <PricingLink className="transition-colors hover:text-white">
             Pricing
-          </button>
+          </PricingLink>
         </div>
       </div>
       <div className="flex items-center gap-3 sm:gap-6">
@@ -125,7 +185,6 @@ function Nav() {
 }
 
 function Hero() {
-  const { openPricing } = usePricingDialog();
   const { openProjects } = useProjectsDialog();
 
   return (
@@ -180,13 +239,9 @@ function Hero() {
               >
                 Open projects
               </button>
-              <button
-                type="button"
-                onClick={() => openPricing()}
-                className="rounded-md border border-white/10 bg-transparent px-5 py-2.5 text-[14px] text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white"
-              >
+              <PricingLink className="rounded-md border border-white/10 bg-transparent px-5 py-2.5 text-[14px] text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white">
                 View pricing
-              </button>
+              </PricingLink>
             </Show>
           </div>
         </div>
@@ -342,12 +397,25 @@ function Features() {
   return (
     <section className="border-t border-white/5 bg-white/[0.01] py-24">
       <div className="mx-auto max-w-6xl px-6 md:px-8">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+            Principles
+          </div>
+          <h2
+            className={cn(
+              display.className,
+              "text-3xl font-bold tracking-tight text-white md:text-5xl",
+            )}
+          >
+            Engineered for the compiler in your head.
+          </h2>
+        </div>
         <div className="grid gap-6 md:grid-cols-3">
           {FEATURES.map((feature) => (
             <div
               key={feature.id}
               id={feature.id}
-              className="rounded-2xl border border-white/5 bg-zinc-900/50 p-8 transition-all hover:border-white/10 md:p-10"
+              className="scroll-mt-24 rounded-2xl border border-white/5 bg-zinc-900/50 p-8 transition-all hover:border-white/10 md:p-10"
             >
               <div className="mb-6 font-mono text-[10px] font-bold tracking-widest text-[#7eb0f8] uppercase">
                 {feature.label}
@@ -366,8 +434,166 @@ function Features() {
   );
 }
 
+function EngineDeepDive() {
+  return (
+    <section className="border-t border-white/5 py-24 md:py-32">
+      <div className="mx-auto grid max-w-6xl gap-16 px-6 md:grid-cols-2 md:items-center md:px-8">
+        <div>
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+            04 // Native workspace
+          </div>
+          <h2
+            className={cn(
+              display.className,
+              "mb-6 text-3xl font-bold tracking-tight text-white md:text-5xl md:leading-[1.1]",
+            )}
+          >
+            An AI workspace that lives{" "}
+            <span className="text-[#8b8e96]">inside</span> the browser.
+          </h2>
+          <p className="mb-8 text-base leading-relaxed text-[#8b8e96] md:text-lg">
+            No separate chat app, no desktop install. Polaris keeps the editor,
+            assistant, Git, and terminal on one surface so you stay in flow.
+          </p>
+          <div className="space-y-4">
+            {CAPABILITIES.map((row) => (
+              <div
+                key={row.k}
+                className="flex items-baseline justify-between gap-4 border-b border-white/5 pb-3"
+              >
+                <span className="font-mono text-[11px] tracking-widest text-[#9a9a9a] uppercase">
+                  {row.k}
+                </span>
+                <span className="text-right text-sm font-medium text-white">
+                  {row.v}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-10 rounded-full bg-[#3574f0]/15 blur-[100px]"
+          />
+          <div className="relative rounded-2xl border border-white/10 bg-zinc-950 p-8 font-mono text-[12px] leading-relaxed">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-[10px] tracking-widest text-[#9a9a9a] uppercase">
+                workspace_trace.log
+              </span>
+              <span className="rounded bg-[#3574f0]/20 px-2 py-0.5 text-[10px] font-bold text-[#7eb0f8]">
+                LIVE
+              </span>
+            </div>
+            <div className="space-y-2 text-zinc-400">
+              <div>
+                <span className="text-[#7eb0f8]">→</span> open: page.tsx{" "}
+                <span className="text-[#9a9a9a]">(ready)</span>
+              </div>
+              <div>
+                <span className="text-[#7eb0f8]">→</span> context: 3 tabs + git
+                status
+              </div>
+              <div>
+                <span className="text-[#7eb0f8]">→</span> assist: refactor Hero
+                CTA
+              </div>
+              <div className="text-emerald-400">
+                ✓ patch ready{" "}
+                <span className="text-[#9a9a9a]">(apply in editor)</span>
+              </div>
+              <div className="mt-4 border-t border-white/5 pt-3 text-white/60">
+                <span className="text-[#c792ea]">const</span> workspace ={" "}
+                <span className="text-[#c792ea]">await</span> Polaris.
+                <span className="text-[#82aaff]">boot</span>();
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WorkflowSteps() {
+  return (
+    <section
+      id="workflow"
+      className="scroll-mt-24 border-t border-white/5 bg-white/[0.01] py-24 md:py-32"
+    >
+      <div className="mx-auto max-w-6xl px-6 md:px-8">
+        <div className="mx-auto mb-16 max-w-2xl text-center md:mb-20">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+            Workflow
+          </div>
+          <h2
+            className={cn(
+              display.className,
+              "text-3xl font-bold tracking-tight text-white md:text-5xl",
+            )}
+          >
+            Four steps. Zero context switching.
+          </h2>
+        </div>
+
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-white/5 bg-white/5 md:grid-cols-4">
+          {WORKFLOW_STEPS.map((s) => (
+            <div
+              key={s.n}
+              className="group relative bg-[#121316] p-8 transition-colors hover:bg-white/[0.02]"
+            >
+              <div className="mb-8 font-mono text-[42px] leading-none font-bold text-white/10 transition-colors group-hover:text-[#3574f0]/40">
+                {s.n}
+              </div>
+              <h3 className="mb-3 text-lg font-bold text-white">{s.t}</h3>
+              <p className="text-[13px] leading-relaxed text-[#8b8e96]">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FaqSection() {
+  return (
+    <section id="faq" className="scroll-mt-24 border-t border-white/5 py-24 md:py-32">
+      <div className="mx-auto max-w-3xl px-6 md:px-8">
+        <div className="mb-12 text-center">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+            FAQ
+          </div>
+          <h2
+            className={cn(
+              display.className,
+              "text-3xl font-bold tracking-tight text-white md:text-5xl",
+            )}
+          >
+            Answers, before you ask.
+          </h2>
+        </div>
+        <div className="divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/30">
+          {FAQS.map((f) => (
+            <details key={f.q} className="group px-6 py-5">
+              <summary className="flex cursor-pointer items-center justify-between text-[15px] font-medium text-white [&::-webkit-details-marker]:hidden">
+                {f.q}
+                <span className="ml-4 font-mono text-lg text-[#9a9a9a] transition-transform group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="mt-4 text-[14px] leading-relaxed text-[#8b8e96]">
+                {f.a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Cta() {
-  const { openPricing } = usePricingDialog();
   const { openProjects } = useProjectsDialog();
 
   return (
@@ -411,13 +637,9 @@ function Cta() {
                 Open projects
               </button>
             </Show>
-            <button
-              type="button"
-              onClick={() => openPricing()}
-              className="rounded-xl border border-white/10 px-8 py-3.5 text-sm font-medium text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white"
-            >
+            <PricingLink className="rounded-xl border border-white/10 px-8 py-3.5 text-sm font-medium text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white">
               View pricing
-            </button>
+            </PricingLink>
           </div>
           <p className="relative mt-8 font-mono text-[11px] tracking-[0.2em] text-[#9a9a9a]/40 uppercase">
             Browser workspace / AI + Git + terminal
@@ -429,7 +651,6 @@ function Cta() {
 }
 
 function Footer() {
-  const { openPricing } = usePricingDialog();
   const { openProjects } = useProjectsDialog();
 
   return (
@@ -448,13 +669,9 @@ function Footer() {
           </span>
         </div>
         <div className="flex gap-10 font-mono text-[10px] font-bold tracking-widest text-[#9a9a9a] uppercase">
-          <button
-            type="button"
-            onClick={() => openPricing()}
-            className="transition-colors hover:text-white"
-          >
+          <PricingLink className="transition-colors hover:text-white">
             Pricing
-          </button>
+          </PricingLink>
           <Show when="signed-out">
             <SignInButton mode="modal" forceRedirectUrl="/projects">
               <button
@@ -484,11 +701,26 @@ function Footer() {
 }
 
 export function LandingView() {
+  useEffect(() => {
+    if (window.location.hash !== "#pricing") return;
+    const id = window.setTimeout(() => {
+      document.getElementById("pricing")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
     <div className="min-h-dvh bg-[#121316] font-sans text-[#dfdfdf] selection:bg-[#3574f0]/30 selection:text-white">
       <Nav />
       <Hero />
       <Features />
+      <EngineDeepDive />
+      <WorkflowSteps />
+      <PricingSection />
+      <FaqSection />
       <Cta />
       <Footer />
     </div>

@@ -2,22 +2,33 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 
 export function useProjects() {
-  return useQuery(api.projects.getProject)
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(api.projects.getProject, isAuthenticated ? {} : "skip");
 }
 
 export function useProject({ projectId }: { projectId: string }) {
-  return useQuery(api.projects.getProjectById, { projectId: projectId as Id<"projects"> })
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.projects.getProjectById,
+    isAuthenticated
+      ? { projectId: projectId as Id<"projects"> }
+      : "skip",
+  );
 }
 export function useProjectPartial({ limit }: { limit: number }) {
-  return useQuery(api.projects.getPartial, { limit })
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.projects.getPartial,
+    isAuthenticated ? { limit } : "skip",
+  );
 }
 
 export function useProjectTemplates() {
-  return useQuery(api.projects.listTemplates)
+  return useQuery(api.projects.listTemplates);
 }
 
 export function useCreateProject() {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { Manrope } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -12,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useConvexAuth } from "convex/react";
 
 import {
   Dialog,
@@ -50,22 +50,24 @@ export function useProjectsDialog() {
 export function ProjectsDialogProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  // Clerk signed-in ≠ Convex authenticated. Only open after Convex has a valid JWT.
+  const { isAuthenticated } = useConvexAuth();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (pathname === "/projects" && isSignedIn) {
+    if (pathname === "/projects" && isAuthenticated) {
       setOpen(true);
       return;
     }
-    if (pathname.startsWith("/projects/")) {
+    if (pathname.startsWith("/projects/") || !isAuthenticated) {
       setOpen(false);
     }
-  }, [pathname, isSignedIn]);
+  }, [pathname, isAuthenticated]);
 
   const openProjects = useCallback(() => {
+    if (!isAuthenticated) return;
     setOpen(true);
-  }, []);
+  }, [isAuthenticated]);
 
   const closeProjects = useCallback(() => {
     setOpen(false);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
 import {
@@ -14,7 +14,11 @@ const SAVE_DEBOUNCE_MS = 400;
 
 /** Hydrate workspace store from Convex and debounce-save preference changes. */
 export function useWorkspacePrefsSync() {
-  const prefs = useQuery(api.userPreferences.get);
+  const { isAuthenticated } = useConvexAuth();
+  const prefs = useQuery(
+    api.userPreferences.get,
+    isAuthenticated ? {} : "skip",
+  );
   const upsert = useMutation(api.userPreferences.upsert);
   const hydrate = useWorkspaceStore((s) => s.hydrate);
   const hydrated = useWorkspaceStore((s) => s.hydrated);

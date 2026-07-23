@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
@@ -10,7 +10,11 @@ const SAVE_DEBOUNCE_MS = 400;
 
 /** Hydrate editor settings from Convex and debounce-save changes. */
 export function useEditorSettingsSync() {
-  const prefs = useQuery(api.userPreferences.get);
+  const { isAuthenticated } = useConvexAuth();
+  const prefs = useQuery(
+    api.userPreferences.get,
+    isAuthenticated ? {} : "skip",
+  );
   const upsertEditor = useMutation(api.userPreferences.upsertEditor);
   const hydrate = useEditorSettingsStore((s) => s.hydrate);
   const hydrated = useEditorSettingsStore((s) => s.hydrated);
