@@ -91,4 +91,65 @@ export default defineSchema({
     ),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  projectMembers: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    role: v.union(
+      v.literal("owner"),
+      v.literal("editor"),
+      v.literal("viewer"),
+    ),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    color: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_user", ["userId"])
+    .index("by_project_user", ["projectId", "userId"]),
+
+  projectInvites: defineTable({
+    projectId: v.id("projects"),
+    email: v.string(),
+    role: v.union(v.literal("editor"), v.literal("viewer")),
+    invitedBy: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+    ),
+    /** Secret token for accept-via-link. Optional for legacy invites. */
+    token: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_email_status", ["email", "status"])
+    .index("by_project_email", ["projectId", "email"])
+    .index("by_token", ["token"]),
+
+  /** Yjs document state for real-time collaborative editing. */
+  collabDocuments: defineTable({
+    projectId: v.id("projects"),
+    path: v.string(),
+    /** Full Yjs state encoded as bytes. */
+    state: v.bytes(),
+    updatedAt: v.number(),
+  }).index("by_project_path", ["projectId", "path"]),
+
+  /** Ephemeral editor cursors / selections for an open file. */
+  collabCursors: defineTable({
+    projectId: v.id("projects"),
+    path: v.string(),
+    userId: v.string(),
+    sessionId: v.string(),
+    name: v.string(),
+    color: v.string(),
+    anchor: v.number(),
+    head: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project_path", ["projectId", "path"])
+    .index("by_session", ["sessionId"]),
 });

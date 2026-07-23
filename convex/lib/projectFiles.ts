@@ -1,6 +1,5 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { verifyAuth } from "../auth";
 import {
   DEFAULT_TEMPLATE_ID,
   getTemplate,
@@ -8,20 +7,12 @@ import {
   type TemplateId,
 } from "./projectTemplates";
 
-export async function verifyProjectAccess(
-  ctx: QueryCtx | MutationCtx,
-  projectId: Id<"projects">,
-) {
-  const identity = await verifyAuth(ctx);
-  const project = await ctx.db.get("projects", projectId);
-  if (!project) {
-    throw new Error("Project not found");
-  }
-  if (project.ownerId !== identity.subject) {
-    throw new Error("Unauthorized access to this project");
-  }
-  return project;
-}
+export {
+  resolveProjectAccess,
+  verifyProjectAccess,
+  verifyProjectOwnerAccess,
+  verifyProjectWriteAccess,
+} from "./projectAccess";
 
 export function buildPath(parentPath: string | undefined, name: string) {
   return parentPath ? `${parentPath}/${name}` : name;

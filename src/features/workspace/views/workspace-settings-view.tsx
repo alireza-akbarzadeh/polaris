@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { EditorSettingsPanel } from "@/features/settings/components/editor-settings-panel";
 import { ProjectDangerZone } from "@/features/settings/components/project-danger-zone";
+import { ProjectSharingPanel } from "@/features/settings/components/project-sharing-panel";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { useWorkspaceBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,27 @@ export function WorkspaceSettingsView({
 
       <Separator className="mb-10" />
 
+      <section className="mb-10">
+        <h2
+          className={cn(
+            display.className,
+            "mb-4 text-sm font-semibold tracking-tight text-ws-text",
+          )}
+        >
+          Sharing
+        </h2>
+        {project ? (
+          <ProjectSharingPanel
+            projectId={projectId}
+            canManage={Boolean(project.canManage)}
+          />
+        ) : (
+          <p className="text-[13px] text-ws-text-muted">Loading project…</p>
+        )}
+      </section>
+
+      <Separator className="mb-10" />
+
       <section>
         <h2
           className={cn(
@@ -66,11 +88,15 @@ export function WorkspaceSettingsView({
         >
           Project
         </h2>
-        {project?.name ? (
+        {project?.name && project.canManage ? (
           <ProjectDangerZone
             projectId={projectId}
             projectName={project.name}
           />
+        ) : project?.name ? (
+          <p className="text-[13px] text-ws-text-muted">
+            Only the project owner can delete this project.
+          </p>
         ) : (
           <p className="text-[13px] text-ws-text-muted">Loading project…</p>
         )}

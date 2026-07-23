@@ -11,6 +11,7 @@ import {
   touchProject,
   updateDescendantPaths,
   verifyProjectAccess,
+  verifyProjectWriteAccess,
 } from "./lib/projectFiles";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
@@ -66,7 +67,7 @@ export const setFileStaged = mutation({
     staged: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const project = await verifyProjectAccess(ctx, args.projectId);
+    const { project } = await verifyProjectWriteAccess(ctx, args.projectId);
     const file = await ctx.db
       .query("projectFiles")
       .withIndex("by_project_path", (q) =>
@@ -91,7 +92,7 @@ export const setAllChangedStaged = mutation({
     staged: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const project = await verifyProjectAccess(ctx, args.projectId);
+    const { project } = await verifyProjectWriteAccess(ctx, args.projectId);
     const files = await ctx.db
       .query("projectFiles")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
@@ -111,7 +112,7 @@ export const discardFileChanges = mutation({
     path: v.string(),
   },
   handler: async (ctx, args) => {
-    const project = await verifyProjectAccess(ctx, args.projectId);
+    const { project } = await verifyProjectWriteAccess(ctx, args.projectId);
     const file = await ctx.db
       .query("projectFiles")
       .withIndex("by_project_path", (q) =>
@@ -172,7 +173,7 @@ export const create = mutation({
     content: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
 
     const name = args.name.trim();
     if (!name) {
@@ -232,7 +233,7 @@ export const updateContent = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
 
     const file = await ctx.db
       .query("projectFiles")
@@ -269,7 +270,7 @@ export const rename = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
 
     const name = args.name.trim();
     if (!name) {
@@ -333,7 +334,7 @@ export const remove = mutation({
     path: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
 
     const item = await ctx.db
       .query("projectFiles")
@@ -362,7 +363,7 @@ export const move = mutation({
     newParentId: v.optional(v.id("projectFiles")),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
 
     const item = await ctx.db
       .query("projectFiles")
@@ -440,7 +441,7 @@ export const duplicate = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
 
     const item = await ctx.db
       .query("projectFiles")
@@ -556,7 +557,7 @@ export const seedDefaults = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    await verifyProjectAccess(ctx, args.projectId);
+    await verifyProjectWriteAccess(ctx, args.projectId);
     await seedDefaultProjectFiles(ctx, args.projectId);
   },
 });

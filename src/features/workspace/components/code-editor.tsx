@@ -1,5 +1,6 @@
 "use client";
 
+import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import CodeMirror from "@uiw/react-codemirror";
@@ -27,6 +28,8 @@ type CodeEditorProps = {
   filePath: string;
   onChange?: (value: string) => void;
   readOnly?: boolean;
+  collabExtensions?: Extension[];
+  onCreateEditor?: (view: EditorView) => void;
 };
 
 export function CodeEditor({
@@ -34,6 +37,8 @@ export function CodeEditor({
   filePath,
   onChange,
   readOnly = false,
+  collabExtensions,
+  onCreateEditor,
 }: CodeEditorProps) {
   const fileName = fileNameFromPath(filePath);
   const { resolvedTheme } = useTheme();
@@ -77,14 +82,18 @@ export function CodeEditor({
       bracketMatching,
     });
     const base = [...setup, ...languageExtensionForPath(filePath)];
+    const withCollab = collabExtensions?.length
+      ? [...base, ...collabExtensions]
+      : base;
 
     if (readOnly || !supportsAiSuggestion(filePath)) {
-      return base;
+      return withCollab;
     }
 
-    return [...base, ...suggestion(fileName)];
+    return [...withCollab, ...suggestion(fileName)];
   }, [
     bracketMatching,
+    collabExtensions,
     fileName,
     filePath,
     highlightActiveLine,
@@ -99,15 +108,18 @@ export function CodeEditor({
     [editorFontTheme, isDark],
   );
 
+  const isCollab = Boolean(collabExtensions?.length);
+
   return (
     <CodeMirror
-      value={value}
+      value={isCollab ? undefined : value}
       height="100%"
       theme={theme}
       extensions={extensions}
-      onChange={onChange}
+      onChange={isCollab ? undefined : onChange}
       readOnly={readOnly}
       basicSetup={false}
+      onCreateEditor={onCreateEditor}
       className="h-full [&_.cm-editor]:h-full [&_.cm-scroller]:min-h-full [&_.cm-scroller]:overflow-auto"
     />
   );

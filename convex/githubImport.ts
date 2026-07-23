@@ -37,6 +37,9 @@ export const cloneFromGitHub = action({
         name: args.name?.trim() || repo,
         githubRepoUrl: `${owner}/${repo}`,
         githubBranch: branch,
+        email: identity.email ?? undefined,
+        displayName: identity.name ?? identity.nickname ?? undefined,
+        imageUrl: identity.pictureUrl ?? undefined,
       },
     );
 

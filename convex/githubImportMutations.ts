@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { internalMutation } from "./_generated/server";
 import { insertImportedFiles } from "./lib/importProjectFiles";
+import { ensureOwnerMembership } from "./lib/projectAccess";
 
 export const createImportProject = internalMutation({
   args: {
@@ -9,9 +10,12 @@ export const createImportProject = internalMutation({
     name: v.string(),
     githubRepoUrl: v.string(),
     githubBranch: v.string(),
+    email: v.optional(v.string()),
+    displayName: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("projects", {
+    const projectId = await ctx.db.insert("projects", {
       name: args.name,
       ownerId: args.ownerId,
       updatedAt: Date.now(),
@@ -20,6 +24,14 @@ export const createImportProject = internalMutation({
       githubBranch: args.githubBranch,
       source: "github",
     });
+
+    await ensureOwnerMembership(ctx, projectId, args.ownerId, {
+      email: args.email,
+      name: args.displayName,
+      imageUrl: args.imageUrl,
+    });
+
+    return projectId;
   },
 });
 

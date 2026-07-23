@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import {
   useCreateProjectFile,
@@ -170,6 +171,8 @@ function isModKey(event: KeyboardEvent | React.KeyboardEvent) {
 export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   const files = useProjectFiles(projectId);
   const project = useProject({ projectId });
+  const access = useProjectAccess(projectId);
+  const canEdit = access?.canEdit ?? false;
   const seedDefaults = useSeedProjectFiles();
   const createFile = useCreateProjectFile();
   const moveFile = useMoveProjectFile();
@@ -649,10 +652,16 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   const backgroundMenuProps: FileTreeMenuContentProps = {
     isFolder: true,
     showItemActions: false,
-    canPaste,
-    onNewFile: () => startCreate("file"),
-    onNewFolder: () => startCreate("folder"),
-    onPaste: () => void pasteInto(undefined),
+    canPaste: canPaste && canEdit,
+    onNewFile: () => {
+      if (canEdit) startCreate("file");
+    },
+    onNewFolder: () => {
+      if (canEdit) startCreate("folder");
+    },
+    onPaste: () => {
+      if (canEdit) void pasteInto(undefined);
+    },
     onOpen: () => {},
     onOpenInTerminal: () => openInTerminal(""),
     onAddToChat: () => {},
@@ -665,6 +674,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     onCopyRelativePath: () => {},
     onRename: () => {},
     onDelete: () => {},
+    canEdit,
   };
 
   if (files === undefined) {
@@ -677,6 +687,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     return (
       <div className="flex h-full flex-col">
         <TreeToolbar
+          canEdit={canEdit}
           onNewFile={() => startCreate("file")}
           onNewFolder={() => startCreate("folder")}
           onCollapseAll={collapseAll}
@@ -684,7 +695,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div className="flex min-h-24 flex-1 flex-col p-1.5">
-              {renderPendingCreate(undefined, 0)}
+              {canEdit ? renderPendingCreate(undefined, 0) : null}
               {!pendingCreate ? (
                 <p className="px-2 py-2 text-[11px] text-ws-text-muted">No files yet</p>
               ) : null}
@@ -699,6 +710,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   return (
     <div className="flex h-full flex-col">
       <TreeToolbar
+        canEdit={canEdit}
         onNewFile={() => startCreate("file")}
         onNewFolder={() => startCreate("folder")}
         onCollapseAll={collapseAll}
@@ -725,7 +737,8 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
                 pendingCreate={pendingCreate}
                 onStartCreate={startCreate}
                 renderPendingCreate={renderPendingCreate}
-                canPaste={canPaste}
+                canPaste={canPaste && canEdit}
+                canEdit={canEdit}
                 cutPath={
                   treeClipboard?.mode === "cut" &&
                   treeClipboard.projectId === projectId
@@ -750,7 +763,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
                 onAddToNewChat={(path, kind) => attachToChat(path, kind, true)}
               />
             ))}
-            {renderPendingCreate(undefined, 0)}
+            {canEdit ? renderPendingCreate(undefined, 0) : null}
           </nav>
         </ContextMenuTrigger>
         <FileTreeMenuContent {...backgroundMenuProps} />
@@ -771,19 +784,25 @@ function TreeToolbar({
   onNewFile,
   onNewFolder,
   onCollapseAll,
+  canEdit,
 }: {
   onNewFile: () => void;
   onNewFolder: () => void;
   onCollapseAll: () => void;
+  canEdit: boolean;
 }) {
   return (
     <div className="flex items-center gap-0.5 border-b border-ws-border-subtle px-1 py-1">
-      <TreeToolbarButton label="New File" onClick={onNewFile}>
-        <FilePlusIcon className="size-3.5" />
-      </TreeToolbarButton>
-      <TreeToolbarButton label="New Folder" onClick={onNewFolder}>
-        <FolderPlusIcon className="size-3.5" />
-      </TreeToolbarButton>
+      {canEdit ? (
+        <>
+          <TreeToolbarButton label="New File" onClick={onNewFile}>
+            <FilePlusIcon className="size-3.5" />
+          </TreeToolbarButton>
+          <TreeToolbarButton label="New Folder" onClick={onNewFolder}>
+            <FolderPlusIcon className="size-3.5" />
+          </TreeToolbarButton>
+        </>
+      ) : null}
       <TreeToolbarButton label="Collapse All" onClick={onCollapseAll}>
         <ListCollapseIcon className="size-3.5" />
       </TreeToolbarButton>
@@ -818,6 +837,7 @@ function TreeToolbarButton({
 type FileTreeMenuContentProps = {
   isFolder: boolean;
   canPaste: boolean;
+  canEdit?: boolean;
   onNewFile: () => void;
   onNewFolder: () => void;
   onOpen: () => void;
@@ -840,6 +860,7 @@ type FileTreeMenuContentProps = {
 function FileTreeMenuContent({
   isFolder,
   canPaste,
+  canEdit = true,
   onNewFile,
   onNewFolder,
   onOpen,
@@ -877,15 +898,19 @@ function FileTreeMenuContent({
     <Content className="min-w-56 rounded-md border-ws-border bg-ws-hover p-1 text-ws-text shadow-lg">
       {isFolder ? (
         <>
-          <Item onClick={onNewFile} className={itemClassName}>
-            New File...
-            <Shortcut className={shortcutClassName}>A</Shortcut>
-          </Item>
-          <Item onClick={onNewFolder} className={itemClassName}>
-            New Folder...
-            <Shortcut className={shortcutClassName}>F</Shortcut>
-          </Item>
-          <Separator className={separatorClassName} />
+          {canEdit ? (
+            <>
+              <Item onClick={onNewFile} className={itemClassName}>
+                New File...
+                <Shortcut className={shortcutClassName}>A</Shortcut>
+              </Item>
+              <Item onClick={onNewFolder} className={itemClassName}>
+                New Folder...
+                <Shortcut className={shortcutClassName}>F</Shortcut>
+              </Item>
+              <Separator className={separatorClassName} />
+            </>
+          ) : null}
           {showItemActions ? (
             <>
               <Item onClick={onOpenInTerminal} className={itemClassName}>
@@ -937,23 +962,27 @@ function FileTreeMenuContent({
 
       {showItemActions ? (
         <>
-          <Item onClick={onCut} className={itemClassName}>
-            Cut
-            <Shortcut className={shortcutClassName}>X</Shortcut>
-          </Item>
+          {canEdit ? (
+            <Item onClick={onCut} className={itemClassName}>
+              Cut
+              <Shortcut className={shortcutClassName}>X</Shortcut>
+            </Item>
+          ) : null}
           <Item onClick={onCopy} className={itemClassName}>
             Copy
             <Shortcut className={shortcutClassName}>Y</Shortcut>
           </Item>
-          <Item
-            onClick={onPaste}
-            disabled={!canPaste}
-            className={itemClassName}
-          >
-            Paste
-            <Shortcut className={shortcutClassName}>P</Shortcut>
-          </Item>
-          {!isFolder ? (
+          {canEdit ? (
+            <Item
+              onClick={onPaste}
+              disabled={!canPaste}
+              className={itemClassName}
+            >
+              Paste
+              <Shortcut className={shortcutClassName}>P</Shortcut>
+            </Item>
+          ) : null}
+          {canEdit && !isFolder ? (
             <Item onClick={onDuplicate} className={itemClassName}>
               Duplicate
             </Item>
@@ -969,21 +998,25 @@ function FileTreeMenuContent({
               Ctrl+M Ctrl+Shift+C
             </Shortcut>
           </Item>
-          <Separator className={separatorClassName} />
-          <Item onClick={onRename} className={itemClassName}>
-            Rename...
-            <Shortcut className={shortcutClassName}>R</Shortcut>
-          </Item>
-          <Item
-            variant={menuType === "context" ? "destructive" : undefined}
-            onClick={onDelete}
-            className={destructiveClassName}
-          >
-            Delete
-            <Shortcut className={shortcutClassName}>Delete</Shortcut>
-          </Item>
+          {canEdit ? (
+            <>
+              <Separator className={separatorClassName} />
+              <Item onClick={onRename} className={itemClassName}>
+                Rename...
+                <Shortcut className={shortcutClassName}>R</Shortcut>
+              </Item>
+              <Item
+                variant={menuType === "context" ? "destructive" : undefined}
+                onClick={onDelete}
+                className={destructiveClassName}
+              >
+                Delete
+                <Shortcut className={shortcutClassName}>Delete</Shortcut>
+              </Item>
+            </>
+          ) : null}
         </>
-      ) : canPaste ? (
+      ) : canPaste && canEdit ? (
         <Item onClick={onPaste} className={itemClassName}>
           Paste
           <Shortcut className={shortcutClassName}>P</Shortcut>
@@ -1008,6 +1041,7 @@ type FileTreeItemProps = {
     depth: number,
   ) => React.ReactNode;
   canPaste: boolean;
+  canEdit: boolean;
   cutPath: string | null;
   pendingRenameId: Id<"projectFiles"> | null;
   onPendingRenameHandled: () => void;
@@ -1038,6 +1072,7 @@ function FileTreeItem({
   onStartCreate,
   renderPendingCreate,
   canPaste,
+  canEdit,
   cutPath,
   pendingRenameId,
   onPendingRenameHandled,
@@ -1171,6 +1206,7 @@ function FileTreeItem({
   const menuProps: FileTreeMenuContentProps = {
     isFolder,
     canPaste,
+    canEdit,
     onNewFile: () => onStartCreate("file", isFolder ? node.id : undefined),
     onNewFolder: () => onStartCreate("folder", isFolder ? node.id : undefined),
     onOpen: () => {
@@ -1331,6 +1367,7 @@ function FileTreeItem({
               onStartCreate={onStartCreate}
               renderPendingCreate={renderPendingCreate}
               canPaste={canPaste}
+              canEdit={canEdit}
               cutPath={cutPath}
               pendingRenameId={pendingRenameId}
               onPendingRenameHandled={onPendingRenameHandled}

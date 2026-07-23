@@ -8,6 +8,7 @@ import {
   GitBranchIcon,
   Loader2Icon,
   UploadIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -31,7 +32,9 @@ import {
   useGitHubConnection,
 } from "@/features/github/hooks/use-github-connection";
 import { GITHUB_REPO_SCOPE_MESSAGE } from "@/features/github/lib/github-scopes";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
   useProjectFiles,
@@ -63,6 +66,8 @@ function deployUrl(
 
 export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
   const project = useProject({ projectId });
+  const access = useProjectAccess(projectId);
+  const { openTab } = useEditorTabs(projectId);
   const projectFiles = useProjectFiles(projectId);
   const changedFiles = useChangedFiles(projectId);
   const { isConnected, hasRepoScope } = useGitHubConnection();
@@ -245,6 +250,20 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
             <DownloadIcon className="size-3.5" />
           )}
           {isExporting ? "Exporting…" : "Download project ZIP"}
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="bg-ws-border" />
+        <DropdownMenuLabel className="text-[11px] text-ws-text-muted">
+          Sharing
+        </DropdownMenuLabel>
+        <DropdownMenuItem
+          className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
+          onClick={() => openTab({ kind: "settings" })}
+        >
+          <UsersIcon className="size-3.5" />
+          {access?.canManage
+            ? "Invite & manage collaborators"
+            : "View collaborators"}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator className="bg-ws-border" />

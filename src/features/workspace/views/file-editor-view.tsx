@@ -9,7 +9,7 @@ import {
   GlobeIcon,
   ExternalLinkIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   OpenIn,
@@ -25,13 +25,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Id } from "@/convex/_generated/dataModel";
-import { CodeEditor } from "@/features/workspace/components/code-editor";
+import { CollaborativeCodeEditor } from "@/features/workspace/components/collaborative-code-editor";
 import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace-preview-panel";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import {
   useProjectFile,
   useProjectFiles,
-  useUpdateProjectFileContent,
 } from "@/features/workspace/hooks/use-project-files";
 import {
   isPreviewableFile,
@@ -216,12 +215,14 @@ function EditorViewTabs({
   previewAvailable,
   filePath,
   content,
+  readOnly,
 }: {
   activeTab: EditorPanelTab;
   onChange: (tab: EditorPanelTab) => void;
   previewAvailable: boolean;
   filePath: string;
   content: string;
+  readOnly: boolean;
 }) {
   return (
     <div className="flex h-8 shrink-0 items-end justify-between gap-2 border-b border-ws-panel bg-ws-panel px-1">
@@ -238,6 +239,11 @@ function EditorViewTabs({
         >
           <Code2Icon className="size-3" />
           Code
+          {readOnly ? (
+            <span className="rounded bg-ws-hover px-1 py-px text-[9px] uppercase tracking-wide text-ws-text-muted">
+              View
+            </span>
+          ) : null}
         </button>
         {previewAvailable ? (
           <button
@@ -265,52 +271,23 @@ type FileEditorContentProps = {
   projectId: string;
   filePath: string;
   initialContent: string;
+  readOnly: boolean;
 };
 
 function FileEditorContent({
   projectId,
   filePath,
   initialContent,
+  readOnly,
 }: FileEditorContentProps) {
   const [activeTab, setActiveTab] = useState<EditorPanelTab>("code");
   const [content, setContent] = useState(initialContent);
-  const updateContent = useUpdateProjectFileContent();
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectFiles = useProjectFiles(projectId);
   const projectPaths = (projectFiles ?? [])
     .filter((file) => file.kind === "file")
     .map((file) => file.path);
   const previewAvailable =
     isProjectPreviewable(projectPaths) || isPreviewableFile(filePath);
-
-  const persistContent = useCallback(
-    (nextContent: string) => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-      saveTimerRef.current = setTimeout(() => {
-        void updateContent({
-          projectId: projectId as Id<"projects">,
-          path: filePath,
-          content: nextContent,
-        });
-      }, 500);
-    },
-    [filePath, projectId, updateContent],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-    };
-  }, []);
-
-  const onContentChange = (nextContent: string) => {
-    setContent(nextContent);
-    persistContent(nextContent);
-  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -320,14 +297,17 @@ function FileEditorContent({
         previewAvailable={previewAvailable}
         filePath={filePath}
         content={content}
+        readOnly={readOnly}
       />
 
       <div className="min-h-0 flex-1">
         {activeTab === "code" ? (
-          <CodeEditor
-            value={content}
+          <CollaborativeCodeEditor
+            projectId={projectId}
             filePath={filePath}
-            onChange={onContentChange}
+            initialContent={initialContent}
+            readOnly={readOnly}
+            onContentChange={setContent}
           />
         ) : (
           <WorkspacePreviewPanel
@@ -347,8 +327,10 @@ export function FileEditorView({
   syncWorkspaceChrome = true,
 }: FileEditorViewProps) {
   const file = useProjectFile(projectId, filePath);
+  const access = useProjectAccess(projectId);
   const setCurrentFilePath = useWorkspaceStore((s) => s.setCurrentFilePath);
   const setBreadcrumb = useWorkspaceStore((s) => s.setBreadcrumb);
+  const readOnly = access ? !access.canEdit : false;
 
   useEffect(() => {
     if (!syncWorkspaceChrome || !filePath) return;
@@ -369,7 +351,7 @@ export function FileEditorView({
     );
   }
 
-  if (file === undefined) {
+  if (file === undefined || access === undefined) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
         Loading file…
@@ -394,6 +376,7 @@ export function FileEditorView({
       projectId={projectId}
       filePath={filePath}
       initialContent={file.content ?? ""}
+      readOnly={readOnly}
     />
   );
 }

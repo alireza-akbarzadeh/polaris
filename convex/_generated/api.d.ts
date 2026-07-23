@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as collab from "../collab.js";
 import type * as github from "../github.js";
 import type * as githubActions from "../githubActions.js";
 import type * as githubBranches from "../githubBranches.js";
@@ -25,10 +26,13 @@ import type * as githubRepos from "../githubRepos.js";
 import type * as lib_github from "../lib/github.js";
 import type * as lib_githubFetch from "../lib/githubFetch.js";
 import type * as lib_importProjectFiles from "../lib/importProjectFiles.js";
+import type * as lib_projectAccess from "../lib/projectAccess.js";
 import type * as lib_projectFiles from "../lib/projectFiles.js";
 import type * as lib_projectTemplates from "../lib/projectTemplates.js";
+import type * as presence from "../presence.js";
 import type * as projectFiles from "../projectFiles.js";
 import type * as projects from "../projects.js";
+import type * as sharing from "../sharing.js";
 import type * as userPreferences from "../userPreferences.js";
 
 import type {
@@ -39,6 +43,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  collab: typeof collab;
   github: typeof github;
   githubActions: typeof githubActions;
   githubBranches: typeof githubBranches;
@@ -55,10 +60,13 @@ declare const fullApi: ApiFromModules<{
   "lib/github": typeof lib_github;
   "lib/githubFetch": typeof lib_githubFetch;
   "lib/importProjectFiles": typeof lib_importProjectFiles;
+  "lib/projectAccess": typeof lib_projectAccess;
   "lib/projectFiles": typeof lib_projectFiles;
   "lib/projectTemplates": typeof lib_projectTemplates;
+  presence: typeof presence;
   projectFiles: typeof projectFiles;
   projects: typeof projects;
+  sharing: typeof sharing;
   userPreferences: typeof userPreferences;
 }>;
 
@@ -88,4 +96,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
+};

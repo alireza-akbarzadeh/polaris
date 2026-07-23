@@ -5,6 +5,9 @@ import Link from "next/link";
 import { Manrope } from "next/font/google";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
+import {
+  useAcceptPendingInvites,
+} from "@/features/projects/hooks/use-project-access";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { WorkspaceLayout } from "@/features/workspace/views/workspace-layout";
 import { cn } from "@/lib/utils";
@@ -23,6 +26,7 @@ type WorkspaceShellProps = {
 export function WorkspaceShell({ projectId, children }: WorkspaceShellProps) {
   const project = useProject({ projectId });
   const { openProjects } = useProjectsDialog();
+  useAcceptPendingInvites();
 
   if (project === undefined) {
     return (
@@ -46,8 +50,8 @@ export function WorkspaceShell({ projectId, children }: WorkspaceShellProps) {
             Project unavailable
           </h1>
           <p className="text-sm text-muted-foreground">
-            This project doesn’t exist or isn’t owned by your current account.
-            Open one from your projects list or create a new one.
+            This project doesn’t exist or you don’t have access. Ask the owner
+            to invite you, or open one from your projects list.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3">

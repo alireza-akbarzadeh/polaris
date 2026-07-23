@@ -21,11 +21,14 @@ import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
 import { useBilling } from "@/features/billing/hooks/use-billing";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
+import { ProjectPresenceAvatars } from "@/features/workspace/components/project-presence-avatars";
 import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-menu";
 import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 type WorkspaceToolbarProps = {
   projectId: string;
@@ -104,16 +107,24 @@ export function WorkspaceToolbar({
   const { isLoaded, isPro } = useBilling();
   const { openPricing } = usePricingDialog();
   const { openTab } = useEditorTabs(projectId);
+  const access = useProjectAccess(projectId);
 
   return (
     <TooltipProvider delayDuration={200}>
       <header className="flex h-9 shrink-0 items-center gap-1 border-b border-ws-border-subtle bg-ws-panel px-1.5">
-        <div className="flex min-w-0 flex-1 items-center px-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
           <WorkspaceBreadcrumb
             projectId={projectId}
             projectName={projectName}
           />
+          {access?.role === "viewer" ? (
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+              View only
+            </Badge>
+          ) : null}
         </div>
+
+        <ProjectPresenceAvatars projectId={projectId} />
 
         <div className="flex items-center gap-0.5">
           <ToolbarTooltipButton
