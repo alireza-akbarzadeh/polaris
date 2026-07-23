@@ -1,0 +1,53 @@
+import type { ITheme } from "@xterm/xterm";
+
+/** JetBrains-like dark — matches --ws-* dark tokens */
+export const TERMINAL_THEME_DARK: ITheme = {
+  background: "#1e1f22",
+  foreground: "#bcbec4",
+  cursor: "#dfdfdf",
+  cursorAccent: "#1e1f22",
+  selectionBackground: "#214283",
+  selectionForeground: "#dfdfdf",
+  black: "#1e1f22",
+  red: "#ff6b68",
+  green: "#6aab73",
+  yellow: "#bbb529",
+  blue: "#589df6",
+  magenta: "#c77dbb",
+  cyan: "#299999",
+  white: "#bcbec4",
+  brightBlack: "#6f737a",
+  brightRed: "#ff8785",
+  brightGreen: "#89c185",
+  brightYellow: "#d5c264",
+  brightBlue: "#7eb0f8",
+  brightMagenta: "#d89bcb",
+  brightCyan: "#3fbdbd",
+  brightWhite: "#dfdfdf",
+};
+
+/** JetBrains-like light — matches --ws-* light tokens */
+export const TERMINAL_THEME_LIGHT: ITheme = {
+  background: "#f2f3f5",
+  foreground: "#2b2d30",
+  cursor: "#2b2d30",
+  cursorAccent: "#f2f3f5",
+  selectionBackground: "#b3d7ff",
+  selectionForeground: "#2b2d30",
+  black: "#000000",
+  red: "#c72222",
+  green: "#3f6e2a",
+  yellow: "#7a6208",
+  blue: "#1759a5",
+  magenta: "#7a3f9a",
+  cyan: "#0f5f5f",
+  white: "#5a5d63",
+  brightBlack: "#6c707e",
+  brightRed: "#db3b3b",
+  brightGreen: "#548a3d",
+  brightYellow: "#9a7b0a",
+  brightBlue: "#2470c0",
+  brightMagenta: "#9b59b6",
+  brightCyan: "#1a7a7a",
+  brightWhite: "#2b2d30",
+};

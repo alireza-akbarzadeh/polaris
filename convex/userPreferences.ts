@@ -9,6 +9,16 @@ const panelSizesValidator = v.object({
   ai: v.optional(v.number()),
 });
 
+export const editorSettingsValidator = v.object({
+  fontSize: v.number(),
+  tabSize: v.number(),
+  wordWrap: v.boolean(),
+  lineNumbers: v.boolean(),
+  highlightActiveLine: v.boolean(),
+  bracketMatching: v.boolean(),
+  lineHeight: v.number(),
+});
+
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -26,6 +36,7 @@ export const upsert = mutation({
     terminalOpen: v.boolean(),
     aiPanelOpen: v.boolean(),
     panelSizes: panelSizesValidator,
+    editor: v.optional(editorSettingsValidator),
   },
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
@@ -44,6 +55,7 @@ export const upsert = mutation({
         terminal: args.panelSizes.terminal,
         ai: args.panelSizes.ai ?? 28,
       },
+      ...(args.editor ? { editor: args.editor } : {}),
       updatedAt: Date.now(),
     };
 
@@ -53,5 +65,36 @@ export const upsert = mutation({
     }
 
     return await ctx.db.insert("userPreferences", payload);
+  },
+});
+
+export const upsertEditor = mutation({
+  args: {
+    editor: editorSettingsValidator,
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const existing = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        editor: args.editor,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("userPreferences", {
+      userId: identity.subject,
+      sidebarOpen: true,
+      terminalOpen: false,
+      aiPanelOpen: true,
+      panelSizes: { sidebar: 18, terminal: 28, ai: 28 },
+      editor: args.editor,
+      updatedAt: Date.now(),
+    });
   },
 });

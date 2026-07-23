@@ -1,12 +1,14 @@
 import { v } from "convex/values";
 
 import { internalMutation, query } from "./_generated/server";
-import { verifyAuth } from "./auth";
 
 export const getConnection = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await verifyAuth(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
     return await ctx.db
       .query("githubConnections")
       .withIndex("by_user", (q) => q.eq("userId", identity.subject))

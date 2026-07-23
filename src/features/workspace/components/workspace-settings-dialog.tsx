@@ -3,13 +3,16 @@
 import {
   FolderTreeIcon,
   GitBranchIcon,
+  KeyboardIcon,
   PanelBottomIcon,
   PanelLeftIcon,
   PanelRightIcon,
   SearchIcon,
+  Settings2Icon,
   SettingsIcon,
 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import {
   CommandDialog,
@@ -25,6 +28,7 @@ import { runCommand } from "@/features/workspace/commands/registry";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 export function WorkspaceSettingsDialog() {
+  const router = useRouter();
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const closeSettings = useWorkspaceStore((s) => s.closeSettings);
   const openCloneFromGitHub = useWorkspaceStore((s) => s.openCloneFromGitHub);
@@ -49,6 +53,31 @@ export function WorkspaceSettingsDialog() {
       <CommandInput placeholder="Search settings…" />
       <CommandList className="max-h-[min(56vh,420px)]">
         <CommandEmpty>No settings found.</CommandEmpty>
+
+        <CommandGroup heading="Preferences">
+          <CommandItem
+            value="advanced editor settings preferences shortcuts"
+            onSelect={() => {
+              closeSettings();
+              router.push("/settings");
+            }}
+          >
+            <Settings2Icon />
+            <span>Advanced Settings</span>
+          </CommandItem>
+          <CommandItem
+            value="keyboard shortcuts keymap"
+            onSelect={() => {
+              closeSettings();
+              router.push("/settings?tab=shortcuts");
+            }}
+          >
+            <KeyboardIcon />
+            <span>Keyboard Shortcuts</span>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
 
         <CommandGroup heading="GitHub">
           <CommandItem

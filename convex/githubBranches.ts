@@ -55,22 +55,40 @@ export const listBranches = action({
     const currentBranch = project.githubBranch?.trim() || "main";
     const octokit = createOctokit(token);
 
-    const { data } = await octokit.rest.repos.listBranches({
-      owner,
-      repo,
-      per_page: 100,
-    });
+    const branches: Array<{
+      name: string;
+      protected: boolean;
+      isCurrent: boolean;
+    }> = [];
+    let page = 1;
+    const perPage = 100;
 
-    return data
-      .map((branch) => ({
-        name: branch.name,
-        protected: branch.protected,
-        isCurrent: branch.name === currentBranch,
-      }))
-      .sort((a, b) => {
-        if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
-        return a.name.localeCompare(b.name);
+    while (page <= 10) {
+      const { data } = await octokit.rest.repos.listBranches({
+        owner,
+        repo,
+        per_page: perPage,
+        page,
       });
+
+      for (const branch of data) {
+        branches.push({
+          name: branch.name,
+          protected: branch.protected,
+          isCurrent: branch.name === currentBranch,
+        });
+      }
+
+      if (data.length < perPage) {
+        break;
+      }
+      page += 1;
+    }
+
+    return branches.sort((a, b) => {
+      if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
   },
 });
 

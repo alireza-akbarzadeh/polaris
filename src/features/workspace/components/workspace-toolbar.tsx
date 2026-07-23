@@ -1,10 +1,9 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import {
   PanelBottomIcon,
   PanelLeftIcon,
-  PanelRightIcon
+  PanelRightIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -17,6 +16,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AppUserButton } from "@/features/billing/components/app-user-button";
+import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
+import { useBilling } from "@/features/billing/hooks/use-billing";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
 import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-menu";
@@ -98,6 +100,8 @@ export function WorkspaceToolbar({
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
+  const { isLoaded, isPro } = useBilling();
+  const { openPricing } = usePricingDialog();
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -166,8 +170,18 @@ export function WorkspaceToolbar({
           className="mx-1.5 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-ws-border"
         />
 
-        <div className="flex items-center pr-1 [&_.cl-userButtonAvatarBox]:size-6 [&_.cl-userButtonTrigger]:rounded-sm">
-          <UserButton
+        <div className="flex items-center gap-1.5 pr-1 [&_.cl-userButtonAvatarBox]:size-6 [&_.cl-userButtonTrigger]:rounded-sm">
+          {isLoaded && !isPro ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => openPricing()}
+              className="h-6 rounded-sm bg-ws-accent px-2.5 text-[11px] font-medium text-white hover:bg-ws-accent-hover"
+            >
+              Upgrade
+            </Button>
+          ) : null}
+          <AppUserButton
             appearance={{
               elements: {
                 userButtonAvatarBox: "size-6",

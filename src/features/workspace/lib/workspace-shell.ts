@@ -2,14 +2,18 @@ import type { Doc } from "@/convex/_generated/dataModel";
 
 export type ShellProject = {
   name: string;
-  source?: "blank" | "github";
+  source?: "blank" | "github" | "template";
+  templateId?: "empty" | "simple" | "nextjs" | "react" | "tanstack";
   githubRepoUrl?: string;
   githubBranch?: string;
   lastCommitSha?: string;
   syncedAt?: number;
 };
 
-export type ShellFile = Pick<Doc<"projectFiles">, "path" | "name" | "kind" | "content">;
+export type ShellFile = Pick<
+  Doc<"projectFiles">,
+  "path" | "name" | "kind" | "content"
+>;
 
 export type ShellContext = {
   project: ShellProject;
@@ -21,6 +25,12 @@ export type ShellContext = {
 export type ShellHandlers = {
   onGitInit?: (repoName: string) => Promise<string>;
   onOpenGitInitDialog?: () => void;
+  onGitPull?: () => Promise<string>;
+  onGitCommitPush?: (message: string) => Promise<string>;
+  onGitBranchList?: () => Promise<string>;
+  onGitCheckout?: (branch: string) => Promise<string>;
+  onGitCreateBranch?: (name: string) => Promise<string>;
+  onGitLog?: (limit?: number) => Promise<string>;
 };
 
 export type ShellResult = {
@@ -32,16 +42,35 @@ export type ShellResult = {
 const HELP_TEXT = `Polaris terminal is a simulated shell (not a real OS terminal).
 Node, pnpm, npm, and other system binaries are not available yet.
 
+Shortcuts:
+  Tab                        Autocomplete command / path
+  → (right arrow)            Accept dim history suggestion
+  ↑ / ↓                      Browse command history
+  Ctrl+L                     Clear screen
+  Ctrl+U                     Clear line
+  Ctrl+W                     Delete last word
+
 Available commands:
-  help                 Show this help message
-  clear                Clear the terminal
-  pwd                  Print working directory
-  ls [path]            List files and folders
-  cat <file>           Print file contents
-  cd <path>            Change directory
-  git status           Show repository status
-  git init [name]      Open init dialog, or create repo with <name>
-  echo <text>          Print text`;
+  help                      Show this help message
+  clear                     Clear the terminal
+  pwd                       Print working directory
+  ls [path]                 List files and folders
+  cat <file>                Print file contents
+  cd <path>                 Change directory
+  echo <text>               Print text
+
+Git (backed by GitHub API):
+  git status                Show working tree status
+  git init [name]           Open init dialog, or create repo with <name>
+  git pull                  Pull latest files from GitHub
+  git commit -m "message"   Commit local changes and push to GitHub
+  git push -m "message"     Alias for commit + push
+  git branch                List branches
+  git checkout <branch>     Switch branch
+  git checkout -b <name>    Create and switch to a new branch
+  git switch <branch>       Switch branch
+  git switch -c <name>      Create and switch to a new branch
+  git log [-n <count>]      Show recent commits`;
 
 function normalizePath(path: string, cwd: string): string {
   const base = path.startsWith("/") ? path : `${cwd}/${path}`;
@@ -75,11 +104,17 @@ function listDirectory(context: ShellContext, targetPath: string): string {
 
   for (const file of context.files) {
     const relativePath = file.path;
-    if (prefix && !relativePath.startsWith(`${prefix}/`) && relativePath !== prefix) {
+    if (
+      prefix &&
+      !relativePath.startsWith(`${prefix}/`) &&
+      relativePath !== prefix
+    ) {
       continue;
     }
 
-    const remainder = prefix ? relativePath.slice(prefix.length + 1) : relativePath;
+    const remainder = prefix
+      ? relativePath.slice(prefix.length + 1)
+      : relativePath;
     const segment = remainder.split("/")[0];
     if (!segment) {
       continue;
@@ -95,7 +130,9 @@ function listDirectory(context: ShellContext, targetPath: string): string {
   }
 
   if (entries.size === 0) {
-    return normalized === "/" ? "(empty project)" : `ls: ${targetPath}: No such directory`;
+    return normalized === "/"
+      ? "(empty project)"
+      : `ls: ${targetPath}: No such directory`;
   }
 
   return [...entries.entries()]
@@ -134,7 +171,10 @@ function gitStatus(context: ShellContext): string {
   }
 
   const branch = context.project.githubBranch ?? "main";
-  const lines = [`On branch ${branch}`, `Repository: ${context.project.githubRepoUrl}`];
+  const lines = [
+    `On branch ${branch}`,
+    `Repository: ${context.project.githubRepoUrl}`,
+  ];
 
   if (context.changedPaths.size === 0) {
     lines.push("", "nothing to commit, working tree clean");
@@ -145,8 +185,248 @@ function gitStatus(context: ShellContext): string {
   for (const path of [...context.changedPaths].sort()) {
     lines.push(`  modified: ${path}`);
   }
+  lines.push(
+    "",
+    'Use `git commit -m "your message"` to commit and push these changes.',
+  );
 
   return lines.join("\n");
+}
+
+function requireLinkedRepo(context: ShellContext): string | null {
+  if (!context.project.githubRepoUrl || context.project.source !== "github") {
+    return "fatal: not a linked GitHub repository. Run `git init` or clone from GitHub first.";
+  }
+  return null;
+}
+
+/** Parse `git commit -m "msg"` / `git commit -m msg` from remaining args. */
+function parseCommitMessage(args: string[]): string | null {
+  const mIndex = args.findIndex((arg) => arg === "-m" || arg === "-am");
+  if (mIndex === -1) {
+    return null;
+  }
+
+  const rest = args.slice(mIndex + 1);
+  if (rest.length === 0) {
+    return null;
+  }
+
+  const joined = rest.join(" ").trim();
+  if (
+    (joined.startsWith('"') && joined.endsWith('"')) ||
+    (joined.startsWith("'") && joined.endsWith("'"))
+  ) {
+    return joined.slice(1, -1).trim();
+  }
+
+  return joined;
+}
+
+function parseLogLimit(args: string[]): number | undefined {
+  const nIndex = args.findIndex((arg) => arg === "-n" || arg === "--max-count");
+  if (nIndex !== -1) {
+    const value = Number(args[nIndex + 1]);
+    if (Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+  }
+
+  const short = args.find((arg) => /^-\d+$/.test(arg));
+  if (short) {
+    return Math.abs(Number(short));
+  }
+
+  return undefined;
+}
+
+async function runHandler(
+  run: (() => Promise<string>) | undefined,
+  unavailable: string,
+): Promise<ShellResult> {
+  if (!run) {
+    return { output: unavailable, exitCode: 1 };
+  }
+
+  try {
+    const output = await run();
+    return { output, exitCode: 0 };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "ActionCancelledError" || error.message === "Cancelled")
+    ) {
+      return { output: "Aborted.", exitCode: 130 };
+    }
+    return {
+      output:
+        error instanceof Error
+          ? `error: ${error.message}`
+          : "error: command failed",
+      exitCode: 1,
+    };
+  }
+}
+
+async function handleGitCommand(
+  args: string[],
+  context: ShellContext,
+  handlers: ShellHandlers,
+): Promise<ShellResult> {
+  const sub = args[0];
+
+  if (!sub || sub === "status") {
+    return { output: gitStatus(context), exitCode: 0, cwd: context.cwd };
+  }
+
+  if (sub === "init") {
+    if (context.project.githubRepoUrl) {
+      return {
+        output: "fatal: repository already initialized",
+        exitCode: 1,
+        cwd: context.cwd,
+      };
+    }
+
+    if (!args[1]) {
+      handlers.onOpenGitInitDialog?.();
+      return {
+        output: handlers.onOpenGitInitDialog
+          ? "Opening repository initialization dialog…"
+          : "fatal: repository name required. Use `git init <name>`.",
+        exitCode: handlers.onOpenGitInitDialog ? 0 : 1,
+        cwd: context.cwd,
+      };
+    }
+
+    const result = await runHandler(
+      handlers.onGitInit
+        ? () => handlers.onGitInit!(args[1])
+        : undefined,
+      "git init is unavailable in this session",
+    );
+    return { ...result, cwd: context.cwd };
+  }
+
+  if (sub === "pull") {
+    const linked = requireLinkedRepo(context);
+    if (linked) {
+      return { output: linked, exitCode: 1, cwd: context.cwd };
+    }
+    const result = await runHandler(
+      handlers.onGitPull,
+      "git pull is unavailable in this session",
+    );
+    return { ...result, cwd: context.cwd };
+  }
+
+  if (sub === "commit" || sub === "push") {
+    const linked = requireLinkedRepo(context);
+    if (linked) {
+      return { output: linked, exitCode: 1, cwd: context.cwd };
+    }
+
+    const message = parseCommitMessage(args.slice(1));
+    if (!message) {
+      return {
+        output:
+          sub === "push"
+            ? 'usage: git push -m "commit message"\n(Polaris combines commit + push)'
+            : 'usage: git commit -m "commit message"',
+        exitCode: 1,
+        cwd: context.cwd,
+      };
+    }
+
+    if (context.changedPaths.size === 0) {
+      return {
+        output: "nothing to commit, working tree clean",
+        exitCode: 0,
+        cwd: context.cwd,
+      };
+    }
+
+    const result = await runHandler(
+      handlers.onGitCommitPush
+        ? () => handlers.onGitCommitPush!(message)
+        : undefined,
+      "git commit/push is unavailable in this session",
+    );
+    return { ...result, cwd: context.cwd };
+  }
+
+  if (sub === "branch") {
+    const linked = requireLinkedRepo(context);
+    if (linked) {
+      return { output: linked, exitCode: 1, cwd: context.cwd };
+    }
+    const result = await runHandler(
+      handlers.onGitBranchList,
+      "git branch is unavailable in this session",
+    );
+    return { ...result, cwd: context.cwd };
+  }
+
+  if (sub === "checkout" || sub === "switch") {
+    const linked = requireLinkedRepo(context);
+    if (linked) {
+      return { output: linked, exitCode: 1, cwd: context.cwd };
+    }
+
+    const createFlag = args.includes("-b") || args.includes("-c");
+    const name = args.find(
+      (arg, index) =>
+        index > 0 && arg !== "-b" && arg !== "-c" && !arg.startsWith("-"),
+    );
+
+    if (!name) {
+      return {
+        output:
+          sub === "switch"
+            ? "usage: git switch <branch> | git switch -c <name>"
+            : "usage: git checkout <branch> | git checkout -b <name>",
+        exitCode: 1,
+        cwd: context.cwd,
+      };
+    }
+
+    if (createFlag) {
+      const result = await runHandler(
+        handlers.onGitCreateBranch
+          ? () => handlers.onGitCreateBranch!(name)
+          : undefined,
+        "git checkout -b is unavailable in this session",
+      );
+      return { ...result, cwd: context.cwd };
+    }
+
+    const result = await runHandler(
+      handlers.onGitCheckout
+        ? () => handlers.onGitCheckout!(name)
+        : undefined,
+      "git checkout is unavailable in this session",
+    );
+    return { ...result, cwd: context.cwd };
+  }
+
+  if (sub === "log") {
+    const linked = requireLinkedRepo(context);
+    if (linked) {
+      return { output: linked, exitCode: 1, cwd: context.cwd };
+    }
+    const limit = parseLogLimit(args.slice(1));
+    const result = await runHandler(
+      handlers.onGitLog ? () => handlers.onGitLog!(limit) : undefined,
+      "git log is unavailable in this session",
+    );
+    return { ...result, cwd: context.cwd };
+  }
+
+  return {
+    output: `git: '${sub}' is not supported. Type 'help' for available git commands.`,
+    exitCode: 1,
+    cwd: context.cwd,
+  };
 }
 
 export async function runShellCommand(
@@ -178,7 +458,11 @@ export async function runShellCommand(
       };
     case "cat": {
       if (!args[0]) {
-        return { output: "cat: missing file operand", exitCode: 1, cwd: context.cwd };
+        return {
+          output: "cat: missing file operand",
+          exitCode: 1,
+          cwd: context.cwd,
+        };
       }
       const output = readFile(context, args[0]);
       return {
@@ -192,7 +476,10 @@ export async function runShellCommand(
         return { output: context.cwd, exitCode: 0, cwd: "/" };
       }
       const next = normalizePath(args[0], context.cwd);
-      if (next !== "/" && !context.files.some((file) => file.path.startsWith(next.slice(1)))) {
+      if (
+        next !== "/" &&
+        !context.files.some((file) => file.path.startsWith(next.slice(1)))
+      ) {
         return {
           output: `cd: ${args[0]}: No such directory`,
           exitCode: 1,
@@ -203,61 +490,8 @@ export async function runShellCommand(
     }
     case "echo":
       return { output: args.join(" "), exitCode: 0, cwd: context.cwd };
-    case "git": {
-      if (args[0] === "status") {
-        return { output: gitStatus(context), exitCode: 0, cwd: context.cwd };
-      }
-
-      if (args[0] === "init") {
-        if (context.project.githubRepoUrl) {
-          return {
-            output: "fatal: repository already initialized",
-            exitCode: 1,
-            cwd: context.cwd,
-          };
-        }
-
-        if (!args[1]) {
-          handlers.onOpenGitInitDialog?.();
-          return {
-            output: handlers.onOpenGitInitDialog
-              ? "Opening repository initialization dialog…"
-              : "fatal: repository name required. Use `git init <name>`.",
-            exitCode: handlers.onOpenGitInitDialog ? 0 : 1,
-            cwd: context.cwd,
-          };
-        }
-
-        const repoName = args[1];
-        if (!handlers.onGitInit) {
-          return {
-            output: "git init is unavailable in this session",
-            exitCode: 1,
-            cwd: context.cwd,
-          };
-        }
-
-        try {
-          const result = await handlers.onGitInit(repoName);
-          return { output: result, exitCode: 0, cwd: context.cwd };
-        } catch (error) {
-          return {
-            output:
-              error instanceof Error
-                ? `error: ${error.message}`
-                : "error: failed to initialize repository",
-            exitCode: 1,
-            cwd: context.cwd,
-          };
-        }
-      }
-
-      return {
-        output: `git: '${args[0] ?? ""}' is not supported. Try 'git status' or 'git init'.`,
-        exitCode: 1,
-        cwd: context.cwd,
-      };
-    }
+    case "git":
+      return handleGitCommand(args, context, handlers);
     default:
       return {
         output: `${command}: command not found. Type 'help' for available commands.`,

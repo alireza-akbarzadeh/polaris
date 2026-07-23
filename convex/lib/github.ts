@@ -179,12 +179,58 @@ export async function waitForRepositoryBranch(
   repo: string,
   branch: string,
   maxAttempts = 20,
-) {
+): Promise<string> {
+  let resolvedBranch = branch;
+
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    if (await repositoryHasBranch(octokit, owner, repo, branch)) {
-      return;
+    try {
+      const { data: repository } = await octokit.rest.repos.get({
+        owner,
+        repo,
+      });
+      if (repository.default_branch) {
+        resolvedBranch = repository.default_branch;
+      }
+
+      // Non-empty repos expose branches quickly via the branches API.
+      if ((repository.size ?? 0) > 0) {
+        const { data: branches } = await octokit.rest.repos.listBranches({
+          owner,
+          repo,
+          per_page: 5,
+        });
+        if (branches.length > 0) {
+          const match =
+            branches.find((item) => item.name === resolvedBranch) ??
+            branches[0];
+          return match.name;
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof RequestError) || error.status !== 404) {
+        throw error;
+      }
     }
-    await sleep(Math.min(2000, 400 * (attempt + 1)));
+
+    if (await repositoryHasBranch(octokit, owner, repo, resolvedBranch)) {
+      return resolvedBranch;
+    }
+
+    // Fallback: any branch means Git storage is ready.
+    try {
+      const { data: branches } = await octokit.rest.repos.listBranches({
+        owner,
+        repo,
+        per_page: 1,
+      });
+      if (branches[0]?.name) {
+        return branches[0].name;
+      }
+    } catch {
+      // keep polling
+    }
+
+    await sleep(Math.min(2000, 350 * (attempt + 1)));
   }
 
   throw new Error(
@@ -298,6 +344,7 @@ export async function ensureGitHubRepository(
     });
     return {
       repo: data,
+      owner: data.owner.login,
       branch: data.default_branch ?? "main",
       created: true as const,
     };
@@ -313,6 +360,7 @@ export async function ensureGitHubRepository(
 
     return {
       repo: existing,
+      owner: existing.owner.login,
       branch: existing.default_branch ?? "main",
       created: false as const,
     };
@@ -542,34 +590,45 @@ export async function pushProjectFiles(
     files: Array<{ path: string; content: string }>;
   },
 ) {
+  let branch = args.branch;
   let hasBranch = await repositoryHasBranch(
     octokit,
     args.owner,
     args.repo,
-    args.branch,
+    branch,
   );
 
   if (!hasBranch) {
     // Leftover empty repos from earlier failed inits need a Contents API bootstrap.
     try {
       await bootstrapEmptyRepository(octokit, args.owner, args.repo);
-      await waitForRepositoryBranch(
+      branch = await waitForRepositoryBranch(
         octokit,
         args.owner,
         args.repo,
-        args.branch,
+        branch,
+        24,
       );
       hasBranch = true;
     } catch {
-      return pushFilesAsInitialCommitWithRetry(octokit, args);
+      return pushFilesAsInitialCommitWithRetry(octokit, {
+        ...args,
+        branch,
+      });
     }
   }
 
   if (!hasBranch) {
-    return pushFilesAsInitialCommitWithRetry(octokit, args);
+    return pushFilesAsInitialCommitWithRetry(octokit, {
+      ...args,
+      branch,
+    });
   }
 
-  return pushFilesAsCommitWithRetry(octokit, args);
+  return pushFilesAsCommitWithRetry(octokit, {
+    ...args,
+    branch,
+  });
 }
 
 export async function assertGitHubRepoScope(octokit: Octokit) {
@@ -607,7 +666,7 @@ export function formatGitHubApiError(error: unknown): string | null {
 
   if (error.status === 409) {
     if (error.message.toLowerCase().includes("git repository is empty")) {
-      return "GitHub is still preparing your repository. Wait a few seconds and try again.";
+      return "GitHub repository is empty or still initializing. Polaris will retry automatically — if this keeps failing, delete the empty repo on GitHub and try again with a new name.";
     }
     return "GitHub could not complete this action. Wait a few seconds and try again.";
   }

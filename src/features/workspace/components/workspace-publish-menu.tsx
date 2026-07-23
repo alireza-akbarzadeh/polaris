@@ -3,11 +3,14 @@
 import Image from "next/image";
 import {
   CloudUploadIcon,
+  DownloadIcon,
   ExternalLinkIcon,
   GitBranchIcon,
   Loader2Icon,
   UploadIcon,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +32,11 @@ import {
 } from "@/features/github/hooks/use-github-connection";
 import { GITHUB_REPO_SCOPE_MESSAGE } from "@/features/github/lib/github-scopes";
 import { useProject } from "@/features/projects/hooks/use-projects";
-import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
+import {
+  useChangedFiles,
+  useProjectFiles,
+} from "@/features/workspace/hooks/use-project-files";
+import { exportProjectAsZip } from "@/features/workspace/lib/export-project-zip";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -56,11 +63,13 @@ function deployUrl(
 
 export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
   const project = useProject({ projectId });
+  const projectFiles = useProjectFiles(projectId);
   const changedFiles = useChangedFiles(projectId);
   const { isConnected, hasRepoScope } = useGitHubConnection();
   const { connect, isConnecting } = useConnectGitHub();
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
   const showGitPanel = useWorkspaceStore((s) => s.showGitPanel);
+  const [isExporting, setIsExporting] = useState(false);
 
   const isGitHub = project?.source === "github" && Boolean(project.githubRepoUrl);
   const changeCount = changedFiles?.length ?? 0;
@@ -73,6 +82,29 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
       return;
     }
     openGitInitDialog();
+  };
+
+  const onExportZip = () => {
+    if (isExporting) return;
+    if (projectFiles === undefined) {
+      toast.message("Loading project files…");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const result = exportProjectAsZip({
+        projectName: project?.name ?? "project",
+        files: projectFiles,
+      });
+      toast.success(`Exported ${result.fileCount} files as ${result.filename}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not export project",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -197,6 +229,23 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
             Publish to GitHub
           </DropdownMenuItem>
         )}
+
+        <DropdownMenuSeparator className="bg-ws-border" />
+        <DropdownMenuLabel className="text-[11px] text-ws-text-muted">
+          Local
+        </DropdownMenuLabel>
+        <DropdownMenuItem
+          className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
+          onClick={onExportZip}
+          disabled={isExporting || projectFiles === undefined}
+        >
+          {isExporting ? (
+            <Loader2Icon className="size-3.5 animate-spin" />
+          ) : (
+            <DownloadIcon className="size-3.5" />
+          )}
+          {isExporting ? "Exporting…" : "Download project ZIP"}
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator className="bg-ws-border" />
         <DropdownMenuItem

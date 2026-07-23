@@ -15,6 +15,11 @@ export function useProject({ projectId }: { projectId: string }) {
 export function useProjectPartial({ limit }: { limit: number }) {
   return useQuery(api.projects.getPartial, { limit })
 }
+
+export function useProjectTemplates() {
+  return useQuery(api.projects.listTemplates)
+}
+
 export function useCreateProject() {
   const { userId } = useAuth()
   return useMutation(api.projects.createProject).withOptimisticUpdate((localstore, args) => {
@@ -27,6 +32,8 @@ export function useCreateProject() {
         name: args.name,
         ownerId: userId ?? "anonymous",
         updatedAt: now,
+        source: "template" as const,
+        templateId: args.templateId,
       }
       localstore.setQuery(api.projects.getProject, {}, [...(existingProjects ?? []), newProject]);
     }
@@ -63,4 +70,3 @@ export function useUpdateProject() {
     },
   );
 }
-

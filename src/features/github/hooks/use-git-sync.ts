@@ -4,17 +4,22 @@ import { useAction } from "convex/react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  ActionCancelledError,
+  isActionCancelled,
+  useConfirm,
+} from "@/components/confirm-dialog";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 
-function confirmDiscard(message: string) {
-  if (typeof window === "undefined") return false;
-  return window.confirm(message);
+function isLocalChangesError(message: string) {
+  return message.toLowerCase().includes("local change");
 }
 
 export function usePullFromGitHub(projectId: string) {
   const pullFromGitHub = useAction(api.githubPull.pullFromGitHub);
+  const confirm = useConfirm();
   const [isPulling, setIsPulling] = useState(false);
 
   const pull = useCallback(
@@ -36,16 +41,21 @@ export function usePullFromGitHub(projectId: string) {
           "Failed to pull from GitHub",
         );
         const looksLikeLocalChanges =
-          message.toLowerCase().includes("local change") && !options?.force;
+          isLocalChangesError(message) && !options?.force;
 
         if (looksLikeLocalChanges) {
-          const discard = confirmDiscard(
-            `${message}\n\nDiscard local changes and overwrite from GitHub?`,
-          );
+          const discard = await confirm({
+            title: "Discard local changes?",
+            description: `${message}\n\nThis will overwrite your uncommitted files with the latest from GitHub.`,
+            confirmLabel: "Discard & pull",
+            cancelLabel: "Keep changes",
+            tone: "danger",
+          });
           if (discard) {
             setIsPulling(false);
             return pull({ ...options, force: true });
           }
+          throw new ActionCancelledError();
         }
 
         toast.error("Could not pull from GitHub", {
@@ -57,7 +67,7 @@ export function usePullFromGitHub(projectId: string) {
         setIsPulling(false);
       }
     },
-    [pullFromGitHub, projectId],
+    [confirm, pullFromGitHub, projectId],
   );
 
   return { pull, isPulling };
@@ -67,6 +77,7 @@ export function useGitBranches(projectId: string) {
   const listBranches = useAction(api.githubBranches.listBranches);
   const createBranchAction = useAction(api.githubBranches.createBranch);
   const checkoutBranchAction = useAction(api.githubBranches.checkoutBranch);
+  const confirm = useConfirm();
   const [isLoading, setIsLoading] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
 
@@ -100,21 +111,28 @@ export function useGitBranches(projectId: string) {
         toast.success(`Switched to ${result.branch}`);
         return result;
       } catch (error) {
+        if (isActionCancelled(error)) throw error;
+
         const message = parseConvexErrorMessage(
           error,
           "Failed to switch branch",
         );
         const looksLikeLocalChanges =
-          message.toLowerCase().includes("local change") && !options?.force;
+          isLocalChangesError(message) && !options?.force;
 
         if (looksLikeLocalChanges) {
-          const discard = confirmDiscard(
-            `${message}\n\nDiscard local changes and checkout ${branch}?`,
-          );
+          const discard = await confirm({
+            title: "Uncommitted changes",
+            description: `${message}\n\nDiscard local changes and check out “${branch}”?`,
+            confirmLabel: "Discard & switch",
+            cancelLabel: "Stay here",
+            tone: "danger",
+          });
           if (discard) {
             setIsMutating(false);
             return checkout(branch, { force: true });
           }
+          throw new ActionCancelledError();
         }
 
         toast.error("Could not switch branch", {
@@ -126,7 +144,7 @@ export function useGitBranches(projectId: string) {
         setIsMutating(false);
       }
     },
-    [checkoutBranchAction, projectId],
+    [checkoutBranchAction, confirm, projectId],
   );
 
   const createBranch = useCallback(
@@ -149,21 +167,28 @@ export function useGitBranches(projectId: string) {
         );
         return result;
       } catch (error) {
+        if (isActionCancelled(error)) throw error;
+
         const message = parseConvexErrorMessage(
           error,
           "Failed to create branch",
         );
         const looksLikeLocalChanges =
-          message.toLowerCase().includes("local change") && !options?.force;
+          isLocalChangesError(message) && !options?.force;
 
         if (looksLikeLocalChanges) {
-          const discard = confirmDiscard(
-            `${message}\n\nDiscard local changes and switch to the new branch?`,
-          );
+          const discard = await confirm({
+            title: "Uncommitted changes",
+            description: `${message}\n\nDiscard local changes and switch to the new branch “${name}”?`,
+            confirmLabel: "Discard & switch",
+            cancelLabel: "Stay here",
+            tone: "danger",
+          });
           if (discard) {
             setIsMutating(false);
             return createBranch(name, { ...options, force: true });
           }
+          throw new ActionCancelledError();
         }
 
         toast.error("Could not create branch", {
@@ -175,7 +200,7 @@ export function useGitBranches(projectId: string) {
         setIsMutating(false);
       }
     },
-    [createBranchAction, projectId],
+    [confirm, createBranchAction, projectId],
   );
 
   return {

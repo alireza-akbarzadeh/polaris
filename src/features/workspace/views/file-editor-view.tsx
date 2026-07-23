@@ -1,15 +1,37 @@
 "use client";
 
-import { Code2Icon, GlobeIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  Code2Icon,
+  CopyIcon,
+  DownloadIcon,
+  GlobeIcon,
+  ExternalLinkIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  OpenIn,
+  OpenInChatGPT,
+  OpenInClaude,
+  OpenInContent,
+  OpenInTrigger,
+} from "@/components/ai-elements/open-in-chat";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { Id } from "@/convex/_generated/dataModel";
 import { CodeEditor } from "@/features/workspace/components/code-editor";
 import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace-preview-panel";
 import {
   useProjectFile,
   useUpdateProjectFileContent,
 } from "@/features/workspace/hooks/use-project-files";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useFileBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
 import { isPreviewableFile } from "@/features/workspace/lib/preview-utils";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -22,45 +44,213 @@ type FileEditorViewProps = {
   filePath: string;
 };
 
+function fileNameFromPath(filePath: string) {
+  return filePath.split("/").pop() || "page.txt";
+}
+
+function buildPagePrompt(filePath: string, content: string) {
+  return [
+    `I'm working on this page/file: \`${filePath}\`.`,
+    "",
+    "Here is the full page content:",
+    "",
+    "```",
+    content,
+    "```",
+    "",
+    "Please help me understand and improve this page.",
+  ].join("\n");
+}
+
+function EditorPageActions({
+  filePath,
+  content,
+}: {
+  filePath: string;
+  content: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileName = fileNameFromPath(filePath);
+  const openInQuery = useMemo(
+    () => buildPagePrompt(filePath, content),
+    [content, filePath],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current);
+      }
+    };
+  }, []);
+
+  const copyPage = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current);
+      }
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const downloadPage = () => {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div className="mb-px flex items-center gap-0.5 self-center">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={copied ? "Copied" : "Copy page"}
+              onClick={() => void copyPage()}
+              className={cn(
+                "size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+                copied && "text-emerald-400 hover:text-emerald-400",
+              )}
+            >
+              {copied ? (
+                <CheckIcon className="size-3.5" strokeWidth={2} />
+              ) : (
+                <CopyIcon className="size-3.5" strokeWidth={1.75} />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            sideOffset={6}
+            className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-ws-text"
+          >
+            <span className="text-xs">{copied ? "Copied!" : "Copy page"}</span>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Download page"
+              onClick={downloadPage}
+              className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            >
+              <DownloadIcon className="size-3.5" strokeWidth={1.75} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            sideOffset={6}
+            className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-ws-text"
+          >
+            <span className="text-xs">Download page</span>
+          </TooltipContent>
+        </Tooltip>
+
+        <OpenIn query={openInQuery}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <OpenInTrigger>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Open in"
+                  className="h-6 gap-1 rounded-sm px-1.5 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+                >
+                  <ExternalLinkIcon className="size-3.5" strokeWidth={1.75} />
+                  Open in
+                  <ChevronDownIcon className="size-3 opacity-70" />
+                </Button>
+              </OpenInTrigger>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              sideOffset={6}
+              className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-ws-text"
+            >
+              <span className="text-xs">Open page in ChatGPT or Claude</span>
+            </TooltipContent>
+          </Tooltip>
+          <OpenInContent
+            align="end"
+            className="w-52 border-ws-border bg-ws-panel text-ws-text"
+          >
+            <OpenInChatGPT className="gap-2 text-[12px] focus:bg-ws-hover focus:text-ws-text" />
+            <OpenInClaude className="gap-2 text-[12px] focus:bg-ws-hover focus:text-ws-text" />
+          </OpenInContent>
+        </OpenIn>
+      </div>
+    </TooltipProvider>
+  );
+}
+
 function EditorViewTabs({
   activeTab,
   onChange,
   previewAvailable,
+  filePath,
+  content,
 }: {
   activeTab: EditorPanelTab;
   onChange: (tab: EditorPanelTab) => void;
   previewAvailable: boolean;
+  filePath: string;
+  content: string;
 }) {
   return (
-    <div className="flex h-8 shrink-0 items-end gap-px border-b border-ws-panel bg-ws-panel px-1">
-      <button
-        type="button"
-        onClick={() => onChange("code")}
-        className={cn(
-          "inline-flex h-7 items-center gap-1.5 rounded-t-sm px-3 text-[11px] font-medium transition-colors",
-          activeTab === "code"
-            ? "bg-ws-bg text-ws-text"
-            : "text-ws-text-muted hover:text-ws-text",
-        )}
-      >
-        <Code2Icon className="size-3" />
-        Code
-      </button>
-      {previewAvailable ? (
+    <div className="flex h-8 shrink-0 items-end justify-between gap-2 border-b border-ws-panel bg-ws-panel px-1">
+      <div className="flex items-end gap-px">
         <button
           type="button"
-          onClick={() => onChange("preview")}
+          onClick={() => onChange("code")}
           className={cn(
             "inline-flex h-7 items-center gap-1.5 rounded-t-sm px-3 text-[11px] font-medium transition-colors",
-            activeTab === "preview"
+            activeTab === "code"
               ? "bg-ws-bg text-ws-text"
               : "text-ws-text-muted hover:text-ws-text",
           )}
         >
-          <GlobeIcon className="size-3" />
-          Preview
+          <Code2Icon className="size-3" />
+          Code
         </button>
-      ) : null}
+        {previewAvailable ? (
+          <button
+            type="button"
+            onClick={() => onChange("preview")}
+            className={cn(
+              "inline-flex h-7 items-center gap-1.5 rounded-t-sm px-3 text-[11px] font-medium transition-colors",
+              activeTab === "preview"
+                ? "bg-ws-bg text-ws-text"
+                : "text-ws-text-muted hover:text-ws-text",
+            )}
+          >
+            <GlobeIcon className="size-3" />
+            Preview
+          </button>
+        ) : null}
+      </div>
+
+      <EditorPageActions filePath={filePath} content={content} />
     </div>
   );
 }
@@ -117,6 +307,8 @@ function FileEditorContent({
         activeTab={activeTab}
         onChange={setActiveTab}
         previewAvailable={previewAvailable}
+        filePath={filePath}
+        content={content}
       />
 
       <div className="min-h-0 flex-1">

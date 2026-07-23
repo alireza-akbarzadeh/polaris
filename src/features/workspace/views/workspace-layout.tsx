@@ -22,6 +22,7 @@ import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-st
 import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
+import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
@@ -42,6 +43,7 @@ export function WorkspaceLayout({
 }: WorkspaceLayoutProps) {
   useWorkspaceShortcuts();
   useWorkspacePrefsSync();
+  useEditorSettingsSync();
 
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);

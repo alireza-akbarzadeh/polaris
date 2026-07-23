@@ -91,30 +91,33 @@ export const initializeRepository = action({
       status: "exporting",
     });
 
-    const owner = connection.username;
+    const ownerHint = connection.username;
 
     try {
-      const { branch, created } = await ensureGitHubRepository(
+      const ensured = await ensureGitHubRepository(
         octokit,
-        owner,
+        ownerHint,
         repoName,
         args.isPrivate ?? true,
       );
 
+      // Always trust the login/branch returned by GitHub for this repo.
+      const owner = ensured.owner;
+      let branch = ensured.branch;
+
       // Newly created repos (auto_init) need a moment for the default branch.
       // Existing empty leftovers are bootstrapped inside pushProjectFiles.
+      // Never hard-fail here — pushProjectFiles recovers from empty/unready repos.
       try {
-        await waitForRepositoryBranch(
+        branch = await waitForRepositoryBranch(
           octokit,
           owner,
           repoName,
           branch,
-          created ? 20 : 4,
+          ensured.created ? 24 : 8,
         );
-      } catch (error) {
-        if (created) {
-          throw error;
-        }
+      } catch {
+        // Continue; pushProjectFiles will bootstrap or create the first commit.
       }
 
       const commitSha = await pushProjectFiles(octokit, {

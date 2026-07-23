@@ -6,27 +6,16 @@ import CodeMirror from "@uiw/react-codemirror";
 import { useTheme } from "next-themes";
 import { useMemo, useSyncExternalStore } from "react";
 
+import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import {
   languageExtensionForPath,
   supportsAiSuggestion,
 } from "@/features/workspace/lib/editor-languages";
-import { customSetup } from "@/lib/custom-setup";
+import { createEditorSetup } from "@/lib/custom-setup";
 import { suggestion } from "@/lib/suggestion-extension";
 
 const EDITOR_FONT =
   "var(--font-editor-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
-
-const editorFontTheme = EditorView.theme({
-  ".cm-content": {
-    fontFamily: EDITOR_FONT,
-    fontSize: "14px",
-    lineHeight: "1.6",
-  },
-  ".cm-gutters": {
-    fontFamily: EDITOR_FONT,
-    fontSize: "14px",
-  },
-});
 
 function fileNameFromPath(filePath: string) {
   const parts = filePath.split("/");
@@ -55,19 +44,59 @@ export function CodeEditor({
   );
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
 
+  const fontSize = useEditorSettingsStore((s) => s.fontSize);
+  const tabSize = useEditorSettingsStore((s) => s.tabSize);
+  const wordWrap = useEditorSettingsStore((s) => s.wordWrap);
+  const lineNumbers = useEditorSettingsStore((s) => s.lineNumbers);
+  const highlightActiveLine = useEditorSettingsStore((s) => s.highlightActiveLine);
+  const bracketMatching = useEditorSettingsStore((s) => s.bracketMatching);
+  const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
+
+  const editorFontTheme = useMemo(
+    () =>
+      EditorView.theme({
+        ".cm-content": {
+          fontFamily: EDITOR_FONT,
+          fontSize: `${fontSize}px`,
+          lineHeight: String(lineHeight),
+        },
+        ".cm-gutters": {
+          fontFamily: EDITOR_FONT,
+          fontSize: `${fontSize}px`,
+        },
+      }),
+    [fontSize, lineHeight],
+  );
+
   const extensions = useMemo(() => {
-    const base = [customSetup, ...languageExtensionForPath(filePath)];
+    const setup = createEditorSetup({
+      tabSize,
+      wordWrap,
+      lineNumbers,
+      highlightActiveLine,
+      bracketMatching,
+    });
+    const base = [...setup, ...languageExtensionForPath(filePath)];
 
     if (readOnly || !supportsAiSuggestion(filePath)) {
       return base;
     }
 
     return [...base, ...suggestion(fileName)];
-  }, [fileName, filePath, readOnly]);
+  }, [
+    bracketMatching,
+    fileName,
+    filePath,
+    highlightActiveLine,
+    lineNumbers,
+    readOnly,
+    tabSize,
+    wordWrap,
+  ]);
 
   const theme = useMemo(
     () => [isDark ? vscodeDark : vscodeLight, editorFontTheme],
-    [isDark],
+    [editorFontTheme, isDark],
   );
 
   return (

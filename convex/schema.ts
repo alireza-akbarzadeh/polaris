@@ -27,7 +27,16 @@ export default defineSchema({
     lastCommitSha: v.optional(v.string()),
     syncedAt: v.optional(v.number()),
     source: v.optional(
-      v.union(v.literal("blank"), v.literal("github")),
+      v.union(v.literal("blank"), v.literal("github"), v.literal("template")),
+    ),
+    templateId: v.optional(
+      v.union(
+        v.literal("empty"),
+        v.literal("simple"),
+        v.literal("nextjs"),
+        v.literal("react"),
+        v.literal("tanstack"),
+      ),
     ),
   })
     .index("by_owner", ["ownerId"])
@@ -69,6 +78,17 @@ export default defineSchema({
       terminal: v.number(),
       ai: v.optional(v.number()),
     }),
+    editor: v.optional(
+      v.object({
+        fontSize: v.number(),
+        tabSize: v.number(),
+        wordWrap: v.boolean(),
+        lineNumbers: v.boolean(),
+        highlightActiveLine: v.boolean(),
+        bracketMatching: v.boolean(),
+        lineHeight: v.number(),
+      }),
+    ),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 });

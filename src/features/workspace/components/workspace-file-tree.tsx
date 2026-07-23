@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useProject } from "@/features/projects/hooks/use-projects";
 import {
   useCreateProjectFile,
   useDeleteProjectFile,
@@ -168,6 +169,7 @@ function isModKey(event: KeyboardEvent | React.KeyboardEvent) {
 
 export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   const files = useProjectFiles(projectId);
+  const project = useProject({ projectId });
   const seedDefaults = useSeedProjectFiles();
   const createFile = useCreateProjectFile();
   const moveFile = useMoveProjectFile();
@@ -604,10 +606,20 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   );
 
   useEffect(() => {
-    if (files !== undefined && files.length === 0) {
+    // Only backfill legacy empty projects that were never initialized.
+    // Empty templates set syncedAt without files; GitHub imports must not be seeded.
+    if (
+      files !== undefined &&
+      files.length === 0 &&
+      project &&
+      !project.syncedAt &&
+      project.importStatus !== "importing" &&
+      project.source !== "github" &&
+      project.templateId !== "empty"
+    ) {
       void seedDefaults({ projectId: projectId as Id<"projects"> });
     }
-  }, [files, projectId, seedDefaults]);
+  }, [files, project, projectId, seedDefaults]);
 
   const renderPendingCreate = (
     parentId: Id<"projectFiles"> | undefined,

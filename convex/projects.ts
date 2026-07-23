@@ -1,23 +1,43 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { seedDefaultProjectFiles } from "./lib/projectFiles";
+import { seedProjectFiles } from "./lib/projectFiles";
+import {
+  DEFAULT_TEMPLATE_ID,
+  listTemplateMeta,
+  templateIdValidator,
+} from "./lib/projectTemplates";
 import { verifyAuth } from "./auth";
 
+export const listTemplates = query({
+  args: {},
+  handler: async () => {
+    return listTemplateMeta();
+  },
+});
 
 export const createProject = mutation({
   args: {
     name: v.string(),
+    templateId: v.optional(templateIdValidator),
   },
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
+    const name = args.name.trim();
+    if (!name) {
+      throw new Error("Project name is required");
+    }
+
+    const templateId = args.templateId ?? DEFAULT_TEMPLATE_ID;
 
     const projectId = await ctx.db.insert("projects", {
-      name: args.name,
+      name,
       ownerId: identity.subject,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      source: "template",
+      templateId,
     });
-    await seedDefaultProjectFiles(ctx, projectId);
-    return projectId
+    await seedProjectFiles(ctx, projectId, templateId);
+    return projectId;
   },
 });
 
@@ -48,7 +68,6 @@ export const updateProject = mutation({
   },
 });
 
-
 export const getProjectById = query({
   args: {
     projectId: v.id("projects"),
@@ -56,9 +75,7 @@ export const getProjectById = query({
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
 
-    const project = await ctx.db
-      .get("projects", args.projectId);
-
+    const project = await ctx.db.get("projects", args.projectId);
 
     if (!project) {
       throw new Error("Project not found");

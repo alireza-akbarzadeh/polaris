@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "@/convex/_generated/api";
@@ -16,16 +16,24 @@ function getGitHubExternalAccount(user: ReturnType<typeof useUser>["user"]) {
 
 export function useGitHubConnection() {
   const { user } = useUser();
-  const connection = useQuery(api.github.getConnection);
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
+  const connection = useQuery(
+    api.github.getConnection,
+    isAuthenticated ? {} : "skip",
+  );
   const syncConnection = useAction(api.githubActions.syncConnection);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const hasSynced = useRef(false);
+  const hasSyncedForUser = useRef<string | null>(null);
 
   const githubAccount = getGitHubExternalAccount(user);
   const hasRepoScope = hasGitHubRepoScope(githubAccount?.approvedScopes);
 
   const sync = useCallback(async () => {
+    if (!isAuthenticated) {
+      return { connected: false as const };
+    }
+
     setIsSyncing(true);
     setSyncError(null);
     try {
@@ -38,21 +46,30 @@ export function useGitHubConnection() {
     } finally {
       setIsSyncing(false);
     }
-  }, [syncConnection]);
+  }, [isAuthenticated, syncConnection]);
 
   useEffect(() => {
-    if (hasSynced.current) {
+    if (isAuthLoading || !isAuthenticated || !user?.id) {
       return;
     }
-    hasSynced.current = true;
+    if (hasSyncedForUser.current === user.id) {
+      return;
+    }
+    hasSyncedForUser.current = user.id;
     void sync();
-  }, [sync]);
+  }, [isAuthLoading, isAuthenticated, sync, user?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasSyncedForUser.current = null;
+    }
+  }, [isAuthenticated]);
 
   return {
-    connection,
+    connection: connection ?? null,
     isConnected: Boolean(connection),
     hasRepoScope,
-    isLoading: connection === undefined || isSyncing,
+    isLoading: isAuthLoading || (isAuthenticated && connection === undefined) || isSyncing,
     syncError,
     sync,
   };
@@ -60,6 +77,7 @@ export function useGitHubConnection() {
 
 export function useConnectGitHub() {
   const { user, isLoaded } = useUser();
+  const { isAuthenticated } = useConvexAuth();
   const syncConnection = useAction(api.githubActions.syncConnection);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -70,7 +88,7 @@ export function useConnectGitHub() {
   const hasRepoScope = hasGitHubRepoScope(githubAccount?.approvedScopes);
 
   const connect = useCallback(async () => {
-    if (!user) {
+    if (!user || !isAuthenticated) {
       return;
     }
 
@@ -105,13 +123,13 @@ export function useConnectGitHub() {
     } finally {
       setIsConnecting(false);
     }
-  }, [syncConnection, user]);
+  }, [isAuthenticated, syncConnection, user]);
 
   return {
     connect,
     isConnecting,
     hasRepoScope,
-    isReady: isLoaded && Boolean(user),
+    isReady: isLoaded && isAuthenticated && Boolean(user),
   };
 }
 

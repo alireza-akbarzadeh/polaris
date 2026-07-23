@@ -1,8 +1,5 @@
-
-import { ProjectView } from "@/features/projects/views/project-view";
+import { LandingView } from "@/features/auth/components/unauthenticated-view";
 
 export default function Home() {
-  return (
-    <ProjectView />
-  );
+  return <LandingView />;
 }

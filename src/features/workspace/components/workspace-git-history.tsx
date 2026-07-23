@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useAction } from "convex/react";
@@ -71,7 +72,7 @@ export function WorkspaceGitHistory({
 
   useEffect(() => {
     if (!enabled) return;
-    void load();
+    load().catch(console.error);
   }, [enabled, load]);
 
   if (!enabled) {

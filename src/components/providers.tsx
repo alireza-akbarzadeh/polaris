@@ -8,13 +8,44 @@ import {
   ConvexReactClient,
   Unauthenticated,
 } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { usePathname } from "next/navigation";
 
 import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
-import { UnauthenticatedView } from "@/features/auth/components/unauthenticated-view";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { LandingView } from "@/features/auth/components/unauthenticated-view";
+import { PricingDialogProvider } from "@/features/billing/components/pricing-dialog";
+import { ProjectsDialogProvider } from "@/features/projects/components/projects-dialog";
+import { ConfirmDialogProvider } from "@/components/confirm-dialog";
 import ThemeProvider from "./theme-provider";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+/** Public marketing routes — no auth required. */
+const PUBLIC_PATHS = ["/", "/pricing"];
+
+function isPublicPath(pathname: string) {
+  if (pathname === "/") return true;
+  return PUBLIC_PATHS.some(
+    (path) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)),
+  );
+}
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const publicRoute = isPublicPath(pathname);
+
+  return (
+    <>
+      <Authenticated>{children}</Authenticated>
+      <Unauthenticated>
+        {publicRoute ? children : <LandingView />}
+      </Unauthenticated>
+      <AuthLoading>
+        <AuthLoadingView />
+      </AuthLoading>
+    </>
+  );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -30,15 +61,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
           enableSystem={false}
           disableTransitionOnChange
         >
-          <Authenticated>
-            {children}
-          </Authenticated>
-          <Unauthenticated>
-            <UnauthenticatedView />
-          </Unauthenticated>
-          <AuthLoading>
-            <AuthLoadingView />
-          </AuthLoading>
+          <PricingDialogProvider>
+            <ProjectsDialogProvider>
+              <AuthGate>
+                <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+              </AuthGate>
+            </ProjectsDialogProvider>
+          </PricingDialogProvider>
         </ThemeProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
