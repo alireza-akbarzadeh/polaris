@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
-import { action, mutation, query } from "./_generated/server";
-import { api } from "./_generated/api";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { verifyAuth } from "./auth";
 import {
@@ -61,6 +61,44 @@ async function lookupClerkUserByEmail(email: string) {
     email:
       user.email_addresses?.[0]?.email_address?.toLowerCase() ?? email.toLowerCase(),
     name: name || user.username || email,
+    imageUrl: user.image_url ?? undefined,
+  };
+}
+
+async function fetchClerkUserEmails(userId: string) {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("CLERK_SECRET_KEY is not configured in Convex");
+  }
+
+  const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Failed to fetch Clerk user: ${body}`);
+  }
+
+  const user = (await response.json()) as {
+    email_addresses?: Array<{ email_address?: string }>;
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+    image_url?: string | null;
+  };
+
+  const emails = (user.email_addresses ?? [])
+    .map((entry) => entry.email_address?.trim().toLowerCase())
+    .filter((value): value is string => Boolean(value));
+
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+
+  return {
+    emails,
+    name: name || user.username || undefined,
     imageUrl: user.image_url ?? undefined,
   };
 }
@@ -391,6 +429,121 @@ export const acceptPendingInvites = mutation({
     }
 
     return { accepted };
+  },
+});
+
+/** Accept pending invites for verified Clerk emails (used by syncMyInvites). */
+export const acceptInvitesForEmails = internalMutation({
+  args: {
+    userId: v.string(),
+    emails: v.array(v.string()),
+    name: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const emails = [
+      ...new Set(
+        args.emails
+          .map((email) => email.trim().toLowerCase())
+          .filter((email) => email.includes("@")),
+      ),
+    ];
+    if (emails.length === 0) {
+      return { accepted: 0 };
+    }
+
+    let accepted = 0;
+    for (const email of emails) {
+      const invites = await ctx.db
+        .query("projectInvites")
+        .withIndex("by_email_status", (q) =>
+          q.eq("email", email).eq("status", "pending"),
+        )
+        .collect();
+
+      for (const invite of invites) {
+        const existing = await ctx.db
+          .query("projectMembers")
+          .withIndex("by_project_user", (q) =>
+            q.eq("projectId", invite.projectId).eq("userId", args.userId),
+          )
+          .unique();
+
+        if (!existing) {
+          const project = await ctx.db.get("projects", invite.projectId);
+          if (project && project.ownerId !== args.userId) {
+            await ctx.db.insert("projectMembers", {
+              projectId: invite.projectId,
+              userId: args.userId,
+              role: invite.role,
+              email,
+              name: args.name,
+              imageUrl: args.imageUrl,
+              color: colorForUserId(args.userId),
+              createdAt: Date.now(),
+            });
+          }
+        }
+
+        await ctx.db.patch(invite._id, { status: "accepted" });
+        accepted += 1;
+      }
+    }
+
+    return { accepted };
+  },
+});
+
+/**
+ * Pull the signed-in user's emails from Clerk and accept matching invites.
+ * Fixes the common case where the Convex JWT has no email claim.
+ */
+export const syncMyInvites = action({
+  args: {},
+  handler: async (ctx): Promise<{ accepted: number }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const profile = await fetchClerkUserEmails(identity.subject);
+    const jwtEmail = identityEmail(identity);
+    const emails = [
+      ...new Set([
+        ...profile.emails,
+        ...(jwtEmail ? [jwtEmail] : []),
+      ]),
+    ];
+
+    return await ctx.runMutation(internal.sharing.acceptInvitesForEmails, {
+      userId: identity.subject,
+      emails,
+      name: profile.name ?? identityDisplayName(identity),
+      imageUrl: profile.imageUrl ?? identity.pictureUrl,
+    });
+  },
+});
+
+export const ensureInviteToken = mutation({
+  args: {
+    projectId: v.id("projects"),
+    inviteId: v.id("projectInvites"),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const invite = await ctx.db.get("projectInvites", args.inviteId);
+    if (!invite || invite.projectId !== args.projectId) {
+      throw new Error("Invite not found");
+    }
+    if (invite.status !== "pending") {
+      throw new Error("Invite is no longer pending");
+    }
+    if (invite.token) {
+      return invite.token;
+    }
+    const token = createInviteToken();
+    await ctx.db.patch(invite._id, { token });
+    return token;
   },
 });
 

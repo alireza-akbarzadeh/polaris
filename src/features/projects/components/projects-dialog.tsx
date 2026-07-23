@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ProjectsDashboard } from "@/features/projects/components/projects-dashboard";
+import { useAcceptPendingInvites } from "@/features/projects/hooks/use-project-access";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -53,6 +54,7 @@ export function ProjectsDialogProvider({ children }: { children: ReactNode }) {
   // Clerk signed-in ≠ Convex authenticated. Only open after Convex has a valid JWT.
   const { isAuthenticated } = useConvexAuth();
   const [open, setOpen] = useState(false);
+  useAcceptPendingInvites();
 
   useEffect(() => {
     if (pathname === "/projects" && isAuthenticated) {

@@ -46,6 +46,7 @@ export function ProjectSharingPanel({
   const updateMemberRole = useMutation(api.sharing.updateMemberRole);
   const removeMember = useMutation(api.sharing.removeMember);
   const revokeInvite = useMutation(api.sharing.revokeInvite);
+  const ensureInviteToken = useMutation(api.sharing.ensureInviteToken);
   const leaveProject = useMutation(api.sharing.leaveProject);
 
   const [email, setEmail] = useState("");
@@ -129,9 +130,9 @@ export function ProjectSharingPanel({
             </div>
           </div>
           <p className="text-[12px] text-ws-text-muted">
-            If they already have an account, they&apos;re added right away.
-            Otherwise you get a secret invite link to share (email delivery comes
-            later).
+            We don&apos;t send emails yet. If they already have an account,
+            they&apos;re added right away. Otherwise copy the invite link from
+            Pending invites and send it to them.
           </p>
         </form>
       ) : null}
@@ -243,26 +244,39 @@ export function ProjectSharingPanel({
                     {invite.email}
                   </p>
                   <p className="text-[11px] capitalize text-ws-text-muted">
-                    {invite.role}
+                    {invite.role} · share the invite link (no email sent)
                   </p>
                 </div>
-                {invite.token ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Copy invite link"
-                    onClick={() => {
-                      void copyInviteLink(invite.token!)
-                        .then(() => toast.success("Invite link copied"))
-                        .catch(() =>
-                          toast.error("Could not copy invite link"),
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2 text-[11px]"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const token =
+                          invite.token ??
+                          (await ensureInviteToken({
+                            projectId: projectId as Id<"projects">,
+                            inviteId: invite._id,
+                          }));
+                        await copyInviteLink(token);
+                        toast.success("Invite link copied — send it to them");
+                      } catch (error) {
+                        toast.error(
+                          parseConvexErrorMessage(
+                            error,
+                            "Could not copy invite link",
+                          ),
                         );
-                    }}
-                  >
-                    <CopyIcon className="size-3.5" />
-                  </Button>
-                ) : null}
+                      }
+                    })();
+                  }}
+                >
+                  <CopyIcon className="size-3.5" />
+                  Copy link
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
