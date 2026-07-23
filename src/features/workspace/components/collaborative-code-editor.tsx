@@ -12,6 +12,10 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CodeEditor } from "@/features/workspace/components/code-editor";
 import { LiveblocksFileRoom } from "@/features/workspace/components/liveblocks-file-room";
+import {
+  collabCursorTheme,
+  softCollaboratorColor,
+} from "@/features/workspace/lib/collab-cursor-theme";
 import { useRoom, useStatus, useUpdateMyPresence } from "@/liveblocks.config";
 
 type CollaborativeCodeEditorProps = {
@@ -52,10 +56,12 @@ function LiveblocksCollaborativeEditor({
     const undoManager = new Y.UndoManager(ytext);
 
     const self = room.getSelf();
+    const userColor = self?.info?.color ?? "#90A4AE";
+    const displayName = self?.info?.name?.trim() || "User";
     provider.awareness.setLocalStateField("user", {
-      name: self?.info?.name ?? "User",
-      color: self?.info?.color ?? "#90A4AE",
-      colorLight: self?.info?.color ?? "#90A4AE",
+      name: displayName.split(" ")[0] ?? displayName,
+      color: userColor,
+      colorLight: softCollaboratorColor(userColor),
     });
 
     let onSync: ((isSynced: boolean) => void) | null = null;
@@ -69,6 +75,7 @@ function LiveblocksCollaborativeEditor({
       }
       setValue(ytext.toString());
       setCollabExtensions([
+        collabCursorTheme,
         ...(yCollab(ytext, provider.awareness, {
           undoManager: readOnly ? false : undoManager,
         }) as Extension[]),

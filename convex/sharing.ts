@@ -68,7 +68,8 @@ async function lookupClerkUserByEmail(email: string) {
 async function fetchClerkUserEmails(userId: string) {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) {
-    throw new Error("CLERK_SECRET_KEY is not configured in Convex");
+    // Convex may not have Clerk configured; JWT email fallback still works.
+    return { emails: [] as string[], name: undefined, imageUrl: undefined };
   }
 
   const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
@@ -76,6 +77,11 @@ async function fetchClerkUserEmails(userId: string) {
       Authorization: `Bearer ${secretKey}`,
     },
   });
+
+  if (response.status === 404) {
+    // Wrong Clerk instance secret, or deleted user — don't crash the app.
+    return { emails: [] as string[], name: undefined, imageUrl: undefined };
+  }
 
   if (!response.ok) {
     const body = await response.text();
@@ -506,7 +512,19 @@ export const syncMyInvites = action({
       throw new Error("Unauthorized");
     }
 
-    const profile = await fetchClerkUserEmails(identity.subject);
+    let profile: {
+      emails: string[];
+      name?: string;
+      imageUrl?: string;
+    } = { emails: [] };
+
+    try {
+      profile = await fetchClerkUserEmails(identity.subject);
+    } catch (error) {
+      // Never block the app on invite sync / Clerk mismatch.
+      console.error("[syncMyInvites] Clerk lookup failed", error);
+    }
+
     const jwtEmail = identityEmail(identity);
     const emails = [
       ...new Set([
@@ -514,6 +532,10 @@ export const syncMyInvites = action({
         ...(jwtEmail ? [jwtEmail] : []),
       ]),
     ];
+
+    if (emails.length === 0) {
+      return { accepted: 0 };
+    }
 
     return await ctx.runMutation(internal.sharing.acceptInvitesForEmails, {
       userId: identity.subject,
