@@ -30,10 +30,14 @@ import { CodeEditor } from "@/features/workspace/components/code-editor";
 import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace-preview-panel";
 import {
   useProjectFile,
+  useProjectFiles,
   useUpdateProjectFileContent,
 } from "@/features/workspace/hooks/use-project-files";
-import { useFileBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
-import { isPreviewableFile } from "@/features/workspace/lib/preview-utils";
+import {
+  isPreviewableFile,
+  isProjectPreviewable,
+} from "@/features/workspace/lib/preview-utils";
+import { filePathToBreadcrumb } from "@/features/workspace/lib/sample-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +46,8 @@ type EditorPanelTab = "code" | "preview";
 type FileEditorViewProps = {
   projectId: string;
   filePath: string;
+  /** When false, skip breadcrumb / current-file chrome updates (split pane). */
+  syncWorkspaceChrome?: boolean;
 };
 
 function fileNameFromPath(filePath: string) {
@@ -270,7 +276,12 @@ function FileEditorContent({
   const [content, setContent] = useState(initialContent);
   const updateContent = useUpdateProjectFileContent();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const previewAvailable = isPreviewableFile(filePath);
+  const projectFiles = useProjectFiles(projectId);
+  const projectPaths = (projectFiles ?? [])
+    .filter((file) => file.kind === "file")
+    .map((file) => file.path);
+  const previewAvailable =
+    isProjectPreviewable(projectPaths) || isPreviewableFile(filePath);
 
   const persistContent = useCallback(
     (nextContent: string) => {
@@ -330,16 +341,25 @@ function FileEditorContent({
   );
 }
 
-export function FileEditorView({ projectId, filePath }: FileEditorViewProps) {
+export function FileEditorView({
+  projectId,
+  filePath,
+  syncWorkspaceChrome = true,
+}: FileEditorViewProps) {
   const file = useProjectFile(projectId, filePath);
   const setCurrentFilePath = useWorkspaceStore((s) => s.setCurrentFilePath);
-
-  useFileBreadcrumb(projectId, filePath);
+  const setBreadcrumb = useWorkspaceStore((s) => s.setBreadcrumb);
 
   useEffect(() => {
+    if (!syncWorkspaceChrome || !filePath) return;
+    setBreadcrumb(filePathToBreadcrumb(projectId, filePath));
+  }, [filePath, projectId, setBreadcrumb, syncWorkspaceChrome]);
+
+  useEffect(() => {
+    if (!syncWorkspaceChrome) return;
     setCurrentFilePath(filePath || null);
     return () => setCurrentFilePath(null);
-  }, [filePath, setCurrentFilePath]);
+  }, [filePath, setCurrentFilePath, syncWorkspaceChrome]);
 
   if (!filePath) {
     return (

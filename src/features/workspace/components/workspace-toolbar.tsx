@@ -23,6 +23,7 @@ import { runCommand } from "@/features/workspace/commands/registry";
 import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
 import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-menu";
 import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +103,7 @@ export function WorkspaceToolbar({
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const { isLoaded, isPro } = useBilling();
   const { openPricing } = usePricingDialog();
+  const { openTab } = useEditorTabs(projectId);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -182,6 +184,7 @@ export function WorkspaceToolbar({
             </Button>
           ) : null}
           <AppUserButton
+            onOpenSettings={() => openTab({ kind: "settings" })}
             appearance={{
               elements: {
                 userButtonAvatarBox: "size-6",

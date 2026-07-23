@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { deleteAllProjectFiles } from "./lib/importProjectFiles";
 import { seedProjectFiles } from "./lib/projectFiles";
 import {
   DEFAULT_TEMPLATE_ID,
@@ -65,6 +66,29 @@ export const updateProject = mutation({
       name,
       updatedAt: Date.now(),
     });
+  },
+});
+
+export const deleteProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+    confirmName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.ownerId !== identity.subject) {
+      throw new Error("Unauthorized access to this project");
+    }
+    if (project.name !== args.confirmName.trim()) {
+      throw new Error("Project name does not match");
+    }
+
+    await deleteAllProjectFiles(ctx, args.projectId);
+    await ctx.db.delete(args.projectId);
   },
 });
 

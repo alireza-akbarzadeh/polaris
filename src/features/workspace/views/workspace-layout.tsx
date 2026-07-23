@@ -23,6 +23,7 @@ import { WorkspaceTerminal } from "@/features/workspace/components/workspace-ter
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
 import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
+import { useEditorTabsSync, useNewProjectTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
@@ -44,6 +45,8 @@ export function WorkspaceLayout({
   useWorkspaceShortcuts();
   useWorkspacePrefsSync();
   useEditorSettingsSync();
+  useEditorTabsSync(projectId);
+  useNewProjectTabShortcut(projectId);
 
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
@@ -156,7 +159,9 @@ export function WorkspaceLayout({
             onLayoutChanged={onVerticalLayoutChanged}
           >
             <ResizablePanel id="main" minSize="20%" className="min-h-0 bg-ws-bg">
-              <WorkspaceEditorPanel>{children}</WorkspaceEditorPanel>
+              <WorkspaceEditorPanel projectId={projectId}>
+                {children}
+              </WorkspaceEditorPanel>
             </ResizablePanel>
 
             <ResizableHandle className="h-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />

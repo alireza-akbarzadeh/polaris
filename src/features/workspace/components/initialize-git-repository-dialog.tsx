@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -46,10 +45,7 @@ export function InitializeGitRepositoryDialog({
   }, [open, project?.name, clearError]);
 
   const canInitialize =
-    isConnected &&
-    hasRepoScope &&
-    repoName.trim().length > 0 &&
-    !isInitializing;
+    isConnected && hasRepoScope && repoName.trim().length > 0;
 
   const onOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -58,7 +54,7 @@ export function InitializeGitRepositoryDialog({
   };
 
   const onInitialize = async () => {
-    if (!canInitialize) {
+    if (!canInitialize || isInitializing) {
       return;
     }
 
@@ -118,18 +114,11 @@ export function InitializeGitRepositoryDialog({
               <Button
                 type="button"
                 size="sm"
-                disabled={isAuthorizing}
+                loading={isAuthorizing}
                 onClick={() => void connect()}
                 className="h-7 bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
               >
-                {isAuthorizing ? (
-                  <>
-                    <Loader2Icon className="size-3.5 animate-spin" />
-                    Authorizing…
-                  </>
-                ) : (
-                  "Grant Repository Access"
-                )}
+                {isAuthorizing ? "Authorizing…" : "Grant Repository Access"}
               </Button>
             </div>
           ) : null}
@@ -144,6 +133,7 @@ export function InitializeGitRepositoryDialog({
           <Button
             type="button"
             variant="ghost"
+            disabled={isInitializing}
             onClick={closeGitInitDialog}
             className="text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
           >
@@ -151,18 +141,12 @@ export function InitializeGitRepositoryDialog({
           </Button>
           <Button
             type="button"
+            loading={isInitializing}
             disabled={!canInitialize}
             onClick={() => void onInitialize()}
-            className="bg-ws-accent text-white hover:bg-ws-accent-hover disabled:opacity-50"
+            className="bg-ws-accent text-white hover:bg-ws-accent-hover"
           >
-            {isInitializing ? (
-              <>
-                <Loader2Icon className="size-3.5 animate-spin" />
-                Initializing…
-              </>
-            ) : (
-              "Initialize Repository"
-            )}
+            {isInitializing ? "Initializing…" : "Initialize Repository"}
           </Button>
         </DialogFooter>
       </DialogContent>

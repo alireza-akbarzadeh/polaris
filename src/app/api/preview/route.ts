@@ -4,14 +4,17 @@ import { z } from "zod";
 import { buildPreviewDocument } from "@/features/workspace/lib/preview-document.server";
 
 const previewRequestSchema = z.object({
-  code: z.string(),
-  filePath: z.string(),
+  files: z.record(z.string(), z.string()),
+  activePath: z.string().optional(),
 });
 
 export async function POST(request: Request) {
   try {
     const body = previewRequestSchema.parse(await request.json());
-    const html = await buildPreviewDocument(body.code, body.filePath);
+    const html = await buildPreviewDocument({
+      files: body.files,
+      activePath: body.activePath,
+    });
 
     return new NextResponse(html, {
       headers: {

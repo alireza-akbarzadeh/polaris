@@ -129,6 +129,11 @@ export class TerminalLineEditor {
     this.clearSuggestion();
     this.busy = true;
 
+    // Drop ghost text and keep the typed command on its own line.
+    this.term.write(CLEAR_LINE);
+    this.writePrompt(this.term, false);
+    this.term.write(`${command}\r\n`);
+
     try {
       await this.onSubmit(command);
     } finally {

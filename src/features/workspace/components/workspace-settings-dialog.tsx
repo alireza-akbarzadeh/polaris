@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  FolderPlusIcon,
   FolderTreeIcon,
   GitBranchIcon,
   KeyboardIcon,
@@ -12,7 +13,7 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 
 import {
   CommandDialog,
@@ -25,10 +26,13 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 export function WorkspaceSettingsDialog() {
-  const router = useRouter();
+  const params = useParams<{ projectId?: string }>();
+  const projectId = params.projectId;
+  const { openTab } = useEditorTabs(projectId ?? "");
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const closeSettings = useWorkspaceStore((s) => s.closeSettings);
   const openCloneFromGitHub = useWorkspaceStore((s) => s.openCloneFromGitHub);
@@ -39,6 +43,14 @@ export function WorkspaceSettingsDialog() {
 
   const onOpenChange = (open: boolean) => {
     if (!open) closeSettings();
+  };
+
+  const openEditorPage = (
+    kind: "settings" | "shortcuts" | "new-project",
+  ) => {
+    closeSettings();
+    if (!projectId) return;
+    openTab({ kind });
   };
 
   return (
@@ -57,23 +69,25 @@ export function WorkspaceSettingsDialog() {
         <CommandGroup heading="Preferences">
           <CommandItem
             value="advanced editor settings preferences shortcuts"
-            onSelect={() => {
-              closeSettings();
-              router.push("/settings");
-            }}
+            onSelect={() => openEditorPage("settings")}
           >
             <Settings2Icon />
             <span>Advanced Settings</span>
           </CommandItem>
           <CommandItem
             value="keyboard shortcuts keymap"
-            onSelect={() => {
-              closeSettings();
-              router.push("/settings?tab=shortcuts");
-            }}
+            onSelect={() => openEditorPage("shortcuts")}
           >
             <KeyboardIcon />
             <span>Keyboard Shortcuts</span>
+          </CommandItem>
+          <CommandItem
+            value="new project create workspace"
+            onSelect={() => openEditorPage("new-project")}
+          >
+            <FolderPlusIcon />
+            <span>New Project</span>
+            <CommandShortcut>⌘N</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

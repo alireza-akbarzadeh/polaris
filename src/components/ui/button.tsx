@@ -2,6 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
 
+import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
@@ -43,21 +44,49 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    loading?: boolean
   }) {
-  const Comp = asChild ? Slot.Root : "button"
+  const Comp = asChild && !loading ? Slot.Root : "button"
+  const isDisabled = Boolean(disabled || loading)
+  const isIconOnly =
+    size === "icon" || size === "icon-xs" || size === "icon-sm" || size === "icon-lg"
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      data-loading={loading ? "" : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
+      aria-disabled={isDisabled || undefined}
       {...props}
-    />
+    >
+      {loading ? (
+        <>
+          <Spinner
+            className={cn(
+              size === "xs" || size === "icon-xs"
+                ? "size-3"
+                : size === "sm" || size === "icon-sm"
+                  ? "size-3.5"
+                  : "size-4",
+            )}
+          />
+          {isIconOnly ? <span className="sr-only">Loading</span> : children}
+        </>
+      ) : (
+        children
+      )}
+    </Comp>
   )
 }
 

@@ -36,7 +36,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: "Projects",
     shortcuts: [
       { id: "command", label: "Open command palette", keys: "⌘ K" },
-      { id: "new", label: "New project", keys: "⌘ N" },
+      { id: "new", label: "New project", keys: "⌘ N", description: "Opens as an editor tab" },
     ],
   },
   {

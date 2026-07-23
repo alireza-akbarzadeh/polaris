@@ -6,21 +6,38 @@ import type { ComponentProps } from "react";
 
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
 
-type AppUserButtonProps = ComponentProps<typeof UserButton>;
+type AppUserButtonProps = ComponentProps<typeof UserButton> & {
+  /** When set, Settings opens this workspace editor tab instead of /settings. */
+  settingsHref?: string;
+  onOpenSettings?: () => void;
+};
 
-export function AppUserButton({ children, ...props }: AppUserButtonProps) {
+export function AppUserButton({
+  children,
+  settingsHref = "/settings",
+  onOpenSettings,
+  ...props
+}: AppUserButtonProps) {
   const { openPricing } = usePricingDialog();
 
   return (
     <UserButton {...props}>
       <UserButton.MenuItems>
-        <UserButton.Link
-          label="Settings"
-          labelIcon={<SettingsIcon className="size-4" />}
-          href="/settings"
-        />
+        {onOpenSettings ? (
+          <UserButton.Action
+            label="Settings"
+            labelIcon={<SettingsIcon className="size-4" />}
+            onClick={onOpenSettings}
+          />
+        ) : (
+          <UserButton.Link
+            label="Settings"
+            labelIcon={<SettingsIcon className="size-4" />}
+            href={settingsHref}
+          />
+        )}
         <UserButton.Action
-          label="Pricing"
+          label="Billing"
           labelIcon={<CreditCardIcon className="size-4" />}
           onClick={() => openPricing()}
         />

@@ -148,6 +148,8 @@ export function useTerminalShell(projectId: string) {
 
   return {
     projectName: project?.name ?? "project",
+    branch: project?.githubBranch?.trim() || "main",
+    dirty: (changedFiles?.length ?? 0) > 0,
     getContext,
     createHandlers,
     filesRef,

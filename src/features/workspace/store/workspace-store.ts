@@ -28,6 +28,20 @@ export type TreeClipboard = {
   path: string;
 };
 
+export type EditorTabKind =
+  | "welcome"
+  | "file"
+  | "settings"
+  | "shortcuts"
+  | "new-project";
+
+export type EditorTab = {
+  id: string;
+  kind: EditorTabKind;
+  title: string;
+  path?: string;
+};
+
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   goToFileOpen: boolean;
@@ -37,6 +51,12 @@ type WorkspaceState = WorkspacePrefs & {
   leftPanelView: LeftPanelView;
   gitPanelTab: GitPanelTab;
   currentFilePath: string | null;
+  editorTabs: EditorTab[];
+  activeEditorTabId: string | null;
+  editorTabsProjectId: string | null;
+  /** Tab shown in the secondary editor pane when split is open. */
+  editorSplitTabId: string | null;
+  newProjectRequest: number;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
   treeClipboard: TreeClipboard | null;
@@ -62,6 +82,14 @@ type WorkspaceState = WorkspacePrefs & {
   setGitPanelTab: (tab: GitPanelTab) => void;
   showGitPanel: (tab?: GitPanelTab) => void;
   setCurrentFilePath: (path: string | null) => void;
+  syncEditorTabFromRoute: (projectId: string, tab: EditorTab) => void;
+  activateEditorTab: (id: string) => void;
+  closeEditorTab: (id: string) => EditorTab | null;
+  reorderEditorTabs: (fromId: string, toId: string) => void;
+  openEditorSplit: (tabId: string) => void;
+  closeEditorSplit: () => void;
+  resetEditorTabs: (projectId: string) => void;
+  requestOpenNewProject: () => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
   setTreeClipboard: (clipboard: TreeClipboard | null) => void;
@@ -104,6 +132,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   leftPanelView: "explorer",
   gitPanelTab: "changes",
   currentFilePath: null,
+  editorTabs: [],
+  activeEditorTabId: null,
+  editorTabsProjectId: null,
+  editorSplitTabId: null,
+  newProjectRequest: 0,
   hydrated: false,
   breadcrumb: [
     { label: "src" },
@@ -139,6 +172,71 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ...(tab ? { gitPanelTab: tab } : {}),
     }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
+  syncEditorTabFromRoute: (projectId, tab) =>
+    set((s) => {
+      const projectChanged = s.editorTabsProjectId !== projectId;
+      const tabs = projectChanged ? [] : s.editorTabs;
+      const exists = tabs.some((t) => t.id === tab.id);
+      return {
+        editorTabsProjectId: projectId,
+        editorTabs: exists ? tabs : [...tabs, tab],
+        activeEditorTabId: tab.id,
+        ...(projectChanged ? { editorSplitTabId: null } : {}),
+      };
+    }),
+  activateEditorTab: (id) => set({ activeEditorTabId: id }),
+  closeEditorTab: (id) => {
+    const { editorTabs, activeEditorTabId, editorSplitTabId } = get();
+    const index = editorTabs.findIndex((t) => t.id === id);
+    if (index === -1) return null;
+
+    const nextTabs = editorTabs.filter((t) => t.id !== id);
+    let nextActive: EditorTab | null = null;
+
+    if (activeEditorTabId === id) {
+      nextActive =
+        nextTabs[Math.min(index, nextTabs.length - 1)] ?? null;
+    } else {
+      nextActive =
+        nextTabs.find((t) => t.id === activeEditorTabId) ?? null;
+    }
+
+    set({
+      editorTabs: nextTabs,
+      activeEditorTabId: nextActive?.id ?? null,
+      editorSplitTabId: editorSplitTabId === id ? null : editorSplitTabId,
+    });
+
+    return nextActive;
+  },
+  reorderEditorTabs: (fromId, toId) =>
+    set((s) => {
+      if (fromId === toId) return s;
+      const fromIndex = s.editorTabs.findIndex((t) => t.id === fromId);
+      const toIndex = s.editorTabs.findIndex((t) => t.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return s;
+
+      const nextTabs = [...s.editorTabs];
+      const [moved] = nextTabs.splice(fromIndex, 1);
+      if (!moved) return s;
+      nextTabs.splice(toIndex, 0, moved);
+      return { editorTabs: nextTabs };
+    }),
+  openEditorSplit: (tabId) => {
+    const exists = get().editorTabs.some((t) => t.id === tabId);
+    if (!exists) return;
+    set({ editorSplitTabId: tabId });
+  },
+  closeEditorSplit: () => set({ editorSplitTabId: null }),
+  resetEditorTabs: (projectId) =>
+    set({
+      editorTabs: [],
+      activeEditorTabId: null,
+      editorTabsProjectId: projectId,
+      editorSplitTabId: null,
+    }),
+  requestOpenNewProject: () =>
+    set((s) => ({ newProjectRequest: s.newProjectRequest + 1 })),
   setPanelSizes: (sizes) =>
     set((s) => ({
       panelSizes: { ...s.panelSizes, ...sizes },

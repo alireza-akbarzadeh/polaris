@@ -14,6 +14,7 @@ export type CommandId =
   | "openGoToFile"
   | "closeGoToFile"
   | "openCloneFromGitHub"
+  | "openNewProject"
   | "showExplorer"
   | "showSearch"
   | "showGit"
@@ -104,6 +105,12 @@ export const workspaceCommands: Command[] = [
     run: () => store().openCloneFromGitHub(),
   },
   {
+    id: "openNewProject",
+    shortcut: "mod+n",
+    allowInInput: true,
+    run: () => store().requestOpenNewProject(),
+  },
+  {
     id: "showExplorer",
     shortcut: "mod+1",
     allowInInput: true,
@@ -181,6 +188,11 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
   if (!command) return false;
 
   if (isEditableTarget(event.target) && !command.allowInInput) {
+    return false;
+  }
+
+  // ⌘N opens New Project; leave ⌃N for AI "new chat".
+  if (command.id === "openNewProject" && !event.metaKey) {
     return false;
   }
 

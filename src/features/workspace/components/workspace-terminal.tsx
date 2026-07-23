@@ -32,16 +32,18 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
   const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
-    () => () => { },
+    () => () => {},
     () => true,
     () => false,
   );
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
   const isDarkRef = useRef(isDark);
 
-  const { projectName, getContext, createHandlers, filesRef } =
+  const { projectName, branch, dirty, getContext, createHandlers, filesRef } =
     useTerminalShell(projectId);
   const projectNameRef = useRef(projectName);
+  const branchRef = useRef(branch);
+  const dirtyRef = useRef(dirty);
 
   const terminalCwdRequest = useWorkspaceStore((s) => s.terminalCwdRequest);
   const clearTerminalCwdRequest = useWorkspaceStore(
@@ -53,6 +55,15 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const createHandlersRef = useRef(createHandlers);
 
   useEffect(() => {
+    projectNameRef.current = projectName;
+    branchRef.current = branch;
+    dirtyRef.current = dirty;
+    isDarkRef.current = isDark;
+    getContextRef.current = getContext;
+    createHandlersRef.current = createHandlers;
+  }, [projectName, branch, dirty, isDark, getContext, createHandlers]);
+
+  useEffect(() => {
     if (!terminalCwdRequest) return;
 
     cwdRef.current = terminalCwdRequest;
@@ -62,6 +73,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       writeShellPrompt(term, {
         projectName: projectNameRef.current,
         cwd: cwdRef.current,
+        branch: branchRef.current,
+        dirty: dirtyRef.current,
         isDark: isDarkRef.current,
         newline: true,
       });
@@ -75,10 +88,13 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
     const term = new Terminal({
       cursorBlink: true,
+      cursorStyle: "bar",
+      cursorWidth: 1,
       fontFamily:
-        "var(--font-editor-mono), Consolas, 'Courier New', monospace",
-      fontSize: 13,
-      lineHeight: 1.35,
+        "var(--font-terminal), ui-monospace, Menlo, Monaco, Consolas, monospace",
+      fontSize: 12,
+      lineHeight: 1.2,
+      letterSpacing: 0,
       theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,
       scrollback: 2000,
       allowTransparency: false,
@@ -94,6 +110,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       writeShellPrompt(t, {
         projectName: projectNameRef.current,
         cwd: cwdRef.current,
+        branch: branchRef.current,
+        dirty: dirtyRef.current,
         isDark: isDarkRef.current,
         newline,
       });
@@ -108,8 +126,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const execute = async (command: string) => {
       const context = getContextRef.current(cwdRef.current);
       if (!context) {
-        term.writeln("\r\nProject is still loading…");
-        writePrompt(term, true);
+        term.writeln("Project is still loading…");
+        writePrompt(term, false);
         return;
       }
 
@@ -118,7 +136,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       }
 
       const handlers = createHandlersRef.current((line) => {
-        term.writeln(`\r\n${line}`);
+        term.writeln(line);
       });
 
       const result = await runShellCommand(command, context, handlers);
@@ -128,16 +146,17 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       }
 
       if (result.output === "__CLEAR__") {
-        term.clear();
+        // Full reset so the next prompt isn't appended after the typed command.
+        term.reset();
         writePrompt(term, false);
         return;
       }
 
       if (result.output) {
-        term.writeln(`\r\n${result.output.replace(/\n/g, "\r\n")}`);
+        term.write(`${result.output.replace(/\n/g, "\r\n")}\r\n`);
       }
 
-      writePrompt(term, true);
+      writePrompt(term, false);
     };
 
     const editor = new TerminalLineEditor(
@@ -188,7 +207,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       </div>
       <div
         ref={containerRef}
-        className="min-h-0 flex-1 overflow-hidden bg-ws-panel p-2 [&_.xterm]:h-full [&_.xterm-viewport]:!bg-transparent [&_.xterm-screen]:h-full"
+        className="min-h-0 flex-1 overflow-hidden bg-ws-panel p-2 font-terminal [&_.xterm]:h-full [&_.xterm-viewport]:bg-transparent! [&_.xterm-screen]:h-full"
       />
     </div>
   );

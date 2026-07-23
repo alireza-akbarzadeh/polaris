@@ -4,7 +4,7 @@ import type { ITheme } from "@xterm/xterm";
 export const TERMINAL_THEME_DARK: ITheme = {
   background: "#1e1f22",
   foreground: "#bcbec4",
-  cursor: "#dfdfdf",
+  cursor: "#a0a0a8",
   cursorAccent: "#1e1f22",
   selectionBackground: "#214283",
   selectionForeground: "#dfdfdf",
@@ -30,7 +30,7 @@ export const TERMINAL_THEME_DARK: ITheme = {
 export const TERMINAL_THEME_LIGHT: ITheme = {
   background: "#f2f3f5",
   foreground: "#2b2d30",
-  cursor: "#2b2d30",
+  cursor: "#6c707e",
   cursorAccent: "#f2f3f5",
   selectionBackground: "#b3d7ff",
   selectionForeground: "#2b2d30",

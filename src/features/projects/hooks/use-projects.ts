@@ -81,3 +81,24 @@ export function useUpdateProject() {
     },
   );
 }
+
+export function useDeleteProject() {
+  return useMutation(api.projects.deleteProject).withOptimisticUpdate(
+    (localstore, args) => {
+      localstore.setQuery(
+        api.projects.getProjectById,
+        { projectId: args.projectId },
+        null,
+      );
+
+      const projects = localstore.getQuery(api.projects.getProject);
+      if (projects !== undefined) {
+        localstore.setQuery(
+          api.projects.getProject,
+          {},
+          projects.filter((item) => item._id !== args.projectId),
+        );
+      }
+    },
+  );
+}
