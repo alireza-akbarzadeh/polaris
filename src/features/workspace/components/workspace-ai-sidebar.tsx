@@ -63,6 +63,7 @@ import {
   saveAiChatSessions,
   type AiChatSession,
 } from "@/features/workspace/lib/ai-chat-sessions";
+import { saveFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { POLARIS_CHAT_MODEL } from "@/lib/ai/gemini-model";
 import {
@@ -232,6 +233,9 @@ function WorkspaceAiChatSession({
             path: input.path,
             content: input.content,
           });
+          // Keep a session draft so an open/empty Liveblocks room reseeds
+          // instead of overwriting this Convex write with "".
+          saveFileContentDraft(pid, result.path, input.content);
           add({
             tool: "writeFile",
             toolCallId: toolCall.toolCallId,
@@ -365,6 +369,7 @@ function WorkspaceAiChatSession({
         path,
         content,
       });
+      saveFileContentDraft(projectId, result.path, content);
       openTab({ kind: "file", path: result.path });
       return result;
     },

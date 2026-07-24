@@ -17,6 +17,7 @@ import {
   loadFileContentDraft,
   resolveSeedContent,
   saveFileContentDraft,
+  shouldApplyExternalContent,
   shouldReseedLiveblocks,
 } from "@/features/workspace/lib/file-content-drafts";
 import {
@@ -34,6 +35,17 @@ type CollaborativeCodeEditorProps = {
   readOnly?: boolean;
   onContentChange?: (content: string) => void;
 };
+
+function replaceYText(ydoc: Y.Doc, ytext: Y.Text, next: string) {
+  ydoc.transact(() => {
+    if (ytext.length > 0) {
+      ytext.delete(0, ytext.length);
+    }
+    if (next) {
+      ytext.insert(0, next);
+    }
+  });
+}
 
 function LiveblocksCollaborativeEditor({
   projectId,
@@ -58,6 +70,8 @@ function LiveblocksCollaborativeEditor({
   const readOnlyRef = useRef(readOnly);
   /** Ignore empty Y.Doc observer pulses until after we finish seeding. */
   const acceptRemoteEditsRef = useRef(false);
+  /** Skip autosave while we push an external Convex/AI write into Y.Doc. */
+  const applyingExternalRef = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [value, setValue] = useState(initialContent);
@@ -71,6 +85,7 @@ function LiveblocksCollaborativeEditor({
   readOnlyRef.current = readOnly;
 
   const ytextRef = useRef<Y.Text | null>(null);
+  const ydocRef = useRef<Y.Doc | null>(null);
 
   const persistToServerRef = useRef<(content: string) => void>(() => {});
   persistToServerRef.current = (content: string) => {
@@ -152,6 +167,7 @@ function LiveblocksCollaborativeEditor({
     const ydoc = provider.getYDoc();
     const ytext = ydoc.getText("codemirror");
     ytextRef.current = ytext;
+    ydocRef.current = ydoc;
     const undoManager = new Y.UndoManager(ytext);
 
     const self = room.getSelf();
@@ -179,12 +195,7 @@ function LiveblocksCollaborativeEditor({
       const seed = resolveSeed();
       const current = ytext.toString();
       if (shouldReseedLiveblocks(current, seed)) {
-        ydoc.transact(() => {
-          if (ytext.length > 0) {
-            ytext.delete(0, ytext.length);
-          }
-          ytext.insert(0, seed);
-        });
+        replaceYText(ydoc, ytext, seed);
         saveFileContentDraft(projectId, filePath, seed);
         if (seed !== initialContentRef.current && !readOnlyRef.current) {
           scheduleServerSave(seed);
@@ -221,7 +232,7 @@ function LiveblocksCollaborativeEditor({
       setValue(text);
       onContentChangeRef.current?.(text);
 
-      if (readOnlyRef.current) return;
+      if (readOnlyRef.current || applyingExternalRef.current) return;
 
       const known =
         loadFileContentDraft(projectId, filePath)?.content ||
@@ -268,10 +279,50 @@ function LiveblocksCollaborativeEditor({
       document.removeEventListener("visibilitychange", onVisibility);
       flushPendingSave();
       ytextRef.current = null;
+      ydocRef.current = null;
       setCollabExtensions(null);
       setReady(false);
     };
   }, [filePath, projectId, room, status]);
+
+  // Push Convex/AI writes into the Liveblocks Y.Doc when this file is open.
+  // Without this, an empty room keeps showing "" and can overwrite the write.
+  useEffect(() => {
+    if (!ready || readOnly) return;
+    const ytext = ytextRef.current;
+    const ydoc = ydocRef.current;
+    if (!ytext || !ydoc) return;
+
+    const current = ytext.toString();
+    const draft = loadFileContentDraft(projectId, filePath);
+    if (
+      !shouldApplyExternalContent({
+        ytextContent: current,
+        serverContent: initialContent,
+        serverUpdatedAt,
+        draft,
+      })
+    ) {
+      return;
+    }
+
+    applyingExternalRef.current = true;
+    try {
+      replaceYText(ydoc, ytext, initialContent);
+      saveFileContentDraft(projectId, filePath, initialContent);
+      setValue(initialContent);
+      onContentChangeRef.current?.(initialContent);
+    } finally {
+      applyingExternalRef.current = false;
+    }
+  }, [
+    filePath,
+    initialContent,
+    projectId,
+    readOnly,
+    ready,
+    serverUpdatedAt,
+  ]);
 
   useEffect(() => {
     if (!ready || readOnly) return;

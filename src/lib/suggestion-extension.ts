@@ -54,6 +54,17 @@ let isWaitingForSuggestion = false;
 let currentAbortController: AbortController | null = null;
 const DEBOUNCE_DELAY = 300;
 
+/** CodeMirror forbids view.dispatch while an update is in progress. */
+function dispatchWhenIdle(
+  view: EditorView,
+  spec: Parameters<EditorView["dispatch"]>[0],
+) {
+  queueMicrotask(() => {
+    if (!view.dom.isConnected) return;
+    view.dispatch(spec);
+  });
+}
+
 const generatePayload = (view: EditorView, fileName: string) => {
   const code = view.state.doc.toString();
 
@@ -96,6 +107,8 @@ const createDebouncePlugin = (fileName: string) =>
   ViewPlugin.fromClass(
     class {
       constructor(view: EditorView) {
+        // Constructor can run during an editor update (e.g. Liveblocks/AI
+        // applying a doc change) — never dispatch synchronously here.
         this.triggerSuggestion(view);
       }
 
@@ -115,16 +128,26 @@ const createDebouncePlugin = (fileName: string) =>
         }
 
         isWaitingForSuggestion = true;
-        view.dispatch({
-          effects: setSuggestionEffect.of(null),
-        });
+
+        // Doc changes already clear suggestionState; for selection moves we
+        // still clear — but always outside the current update cycle.
+        if (view.state.field(suggestionState) !== null) {
+          dispatchWhenIdle(view, {
+            effects: setSuggestionEffect.of(null),
+          });
+        }
 
         debounceTimer = window.setTimeout(async () => {
+          if (!view.dom.isConnected) {
+            isWaitingForSuggestion = false;
+            return;
+          }
+
           const payload = generatePayload(view, fileName);
 
           if (!payload) {
             isWaitingForSuggestion = false;
-            view.dispatch({
+            dispatchWhenIdle(view, {
               effects: setSuggestionEffect.of(null),
             });
             return;
@@ -141,7 +164,7 @@ const createDebouncePlugin = (fileName: string) =>
             return;
           }
 
-          view.dispatch({
+          dispatchWhenIdle(view, {
             effects: setSuggestionEffect.of(suggestion || null),
           });
         }, DEBOUNCE_DELAY);

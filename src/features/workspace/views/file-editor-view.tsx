@@ -301,6 +301,13 @@ function FileEditorContent({
   const previewAvailable =
     isProjectPreviewable(projectPaths) || isPreviewableFile(filePath);
 
+  // When AI writes while this tab shows empty, pick up Convex/draft content.
+  useEffect(() => {
+    if (!content && seedContent) {
+      setContent(seedContent);
+    }
+  }, [content, seedContent]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <EditorViewTabs

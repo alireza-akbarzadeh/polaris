@@ -83,6 +83,7 @@ export function clearFileContentDraft(
 /**
  * Prefer a local draft when it is newer than the server copy, or when the
  * server is empty and the draft still has text (lost autosave on refresh).
+ * Never prefer an empty draft over non-empty server content (AI writes).
  */
 export function resolveSeedContent(
   serverContent: string,
@@ -92,6 +93,11 @@ export function resolveSeedContent(
   if (!draft) return serverContent;
 
   if (draft.content === serverContent) {
+    return serverContent;
+  }
+
+  // Empty Liveblocks pulse must not beat a real Convex/AI write.
+  if (!draft.content && serverContent) {
     return serverContent;
   }
 
@@ -117,4 +123,33 @@ export function shouldReseedLiveblocks(
   if (!seed) return false;
   if (!ytextContent) return true;
   return false;
+}
+
+/**
+ * Whether an external Convex write (AI tool, another client) should replace
+ * the current Liveblocks buffer.
+ */
+export function shouldApplyExternalContent(args: {
+  ytextContent: string;
+  serverContent: string;
+  serverUpdatedAt: number | undefined;
+  draft: FileContentDraft | null;
+}): boolean {
+  const { ytextContent, serverContent, serverUpdatedAt, draft } = args;
+  if (!serverContent || serverContent === ytextContent) return false;
+
+  // Empty Liveblocks room with real server content — always apply.
+  if (!ytextContent) return true;
+
+  // Local edits newer than this server snapshot win.
+  if (
+    draft &&
+    draft.content !== serverContent &&
+    serverUpdatedAt !== undefined &&
+    draft.updatedAt > serverUpdatedAt
+  ) {
+    return false;
+  }
+
+  return true;
 }

@@ -16,6 +16,7 @@ import { LandingView } from "@/features/auth/components/unauthenticated-view";
 import { PricingDialogProvider } from "@/features/billing/components/pricing-dialog";
 import { ProjectsDialogProvider } from "@/features/projects/components/projects-dialog";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
+import { PromptDialogProvider } from "@/components/prompt-dialog";
 import ThemeProvider from "./theme-provider";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -64,7 +65,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <PricingDialogProvider>
             <ProjectsDialogProvider>
               <AuthGate>
-                <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+                <ConfirmDialogProvider>
+                  <PromptDialogProvider>{children}</PromptDialogProvider>
+                </ConfirmDialogProvider>
               </AuthGate>
             </ProjectsDialogProvider>
           </PricingDialogProvider>

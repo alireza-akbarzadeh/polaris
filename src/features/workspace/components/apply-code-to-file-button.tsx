@@ -4,6 +4,7 @@ import { CheckIcon, FilePlus2Icon, Loader2Icon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
+import { usePrompt } from "@/components/prompt-dialog";
 import { useAiCodeActions } from "@/features/workspace/context/ai-code-actions-context";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +82,7 @@ export function ApplyCodeToFileButton({
   className?: string;
 }) {
   const actions = useAiCodeActions();
+  const prompt = usePrompt();
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
 
   const onApply = useCallback(async () => {
@@ -94,13 +96,17 @@ export function ApplyCodeToFileButton({
     }
 
     const metaPath = parsePathFromMeta(meta);
-    const suggested = suggestPath(language, actions.activeFilePath, metaPath);
-    const entered = window.prompt(
-      metaPath
-        ? "Apply this code to file (create if missing):"
-        : "Enter a file path to create or update:",
-      suggested,
-    );
+    const entered = await prompt({
+      title: metaPath
+        ? "Apply this code to file"
+        : "Enter a file path to create or update",
+      description:
+        "The file will be created if it does not exist, or updated if it already does.",
+      defaultValue: suggestPath(language, actions.activeFilePath, metaPath),
+      placeholder: "src/components/Example.tsx",
+      inputLabel: "File path",
+      confirmLabel: "Apply",
+    });
     if (entered == null) return;
 
     const path = entered.trim().replace(/^\.\//, "");
@@ -124,7 +130,7 @@ export function ApplyCodeToFileButton({
           error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }, [actions, code, language, meta]);
+  }, [actions, code, language, meta, prompt]);
 
   if (!actions) return null;
 
