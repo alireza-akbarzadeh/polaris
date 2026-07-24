@@ -61,6 +61,10 @@ export function useStagedCommitContext(projectId: string) {
   });
 }
 
+export function useWriteFileAtPath() {
+  return useMutation(api.projectFiles.writeFileAtPath);
+}
+
 export function useSetFileStaged() {
   return useMutation(api.projectFiles.setFileStaged);
 }

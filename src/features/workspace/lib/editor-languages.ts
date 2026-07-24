@@ -38,7 +38,7 @@ export function languageExtensionForPath(filePath: string): Extension[] {
 }
 
 export function supportsAiSuggestion(filePath: string): boolean {
-  return /\.(tsx?|jsx?|mjs|cjs)$/.test(filePath.toLowerCase());
+  return /\.(tsx?|jsx?|mjs|cjs|css|html?|jsonc?|mdx?)$/i.test(filePath);
 }
 
 const LANGUAGE_LABELS: Array<{ test: RegExp; label: string }> = [

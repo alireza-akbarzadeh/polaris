@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { useConvex, useMutation } from "convex/react";
 import {
   ArrowLeftIcon,
   RotateCcwIcon,
@@ -9,7 +10,14 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  getToolName,
+  isToolUIPart,
+  lastAssistantMessageIsCompleteWithToolCalls,
+  type UIMessage,
+} from "ai";
+import { toast } from "sonner";
 
 import { Shimmer as TextShimmer } from "@/components/ai-elements/shimmer";
 import {
@@ -25,11 +33,26 @@ import {
 } from "@/components/ai-elements/message";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { WorkspaceAiChatInput } from "@/features/workspace/components/workspace-ai-chat-input";
 import { WorkspaceAiHistoryPanel } from "@/features/workspace/components/workspace-ai-history-panel";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
+import {
+  useChangedFiles,
+  useProjectFile,
+  useProjectFiles,
+} from "@/features/workspace/hooks/use-project-files";
 import {
   createAiChatSession,
   deriveSessionSubtitle,
@@ -40,6 +63,10 @@ import {
 } from "@/features/workspace/lib/ai-chat-sessions";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { POLARIS_CHAT_MODEL } from "@/lib/ai/gemini-model";
+import {
+  WORKSPACE_CONTEXT_LIMITS,
+  type WorkspaceChatContext,
+} from "@/lib/ai/workspace-context";
 
 type WorkspaceAiSidebarProps = {
   projectId: string;
@@ -56,8 +83,8 @@ function buildWelcome(projectName?: string): UIMessage {
       {
         type: "text",
         text: projectName
-          ? `I'm Polaris — ready to help with **${projectName}**. Ask me to explain code, plan a change, or draft an edit.`
-          : "I'm Polaris — your AI pair for this workspace. Ask about code, architecture, or next steps.",
+          ? `I'm Polaris — ready to help with **${projectName}**. Ask me to explain code, create files, or edit the project directly.`
+          : "I'm Polaris — your AI pair for this workspace. Ask about code, or tell me to create and edit files.",
       },
     ],
   };
@@ -76,12 +103,78 @@ function WorkspaceAiChatSession({
   onSessionChange: (session: AiChatSession) => void;
   onBack: () => void;
 }) {
-  const breadcrumb = useWorkspaceStore((s) => s.breadcrumb);
-  const activeFile = breadcrumb.at(-1)?.label;
+  const editorTabs = useWorkspaceStore((s) => s.editorTabs);
+  const activeEditorTabId = useWorkspaceStore((s) => s.activeEditorTabId);
   const [modelId, setModelId] = useState(POLARIS_CHAT_MODEL);
   const [autoModel, setAutoModel] = useState(false);
   const modelIdRef = useRef(modelId);
   modelIdRef.current = modelId;
+
+  const activeFilePath =
+    editorTabs.find((tab) => tab.id === activeEditorTabId)?.path ??
+    editorTabs.find((tab) => tab.kind === "file")?.path;
+
+  const projectFiles = useProjectFiles(projectId);
+  const activeFileDoc = useProjectFile(projectId, activeFilePath ?? "");
+  const changedFiles = useChangedFiles(projectId);
+
+  const workspaceContext = useMemo((): WorkspaceChatContext => {
+    const fileTree =
+      projectFiles
+        ?.filter((file) => file.kind === "file")
+        .map((file) => file.path)
+        .sort()
+        .slice(0, WORKSPACE_CONTEXT_LIMITS.maxFilePaths) ?? [];
+
+    const openFiles = editorTabs
+      .filter((tab) => tab.kind === "file" && tab.path)
+      .map((tab) => tab.path!)
+      .slice(0, WORKSPACE_CONTEXT_LIMITS.maxOpenTabs);
+
+    return {
+      projectName,
+      activeFilePath,
+      activeFileContent:
+        activeFileDoc?.kind === "file" ? activeFileDoc.content : undefined,
+      openFiles,
+      fileTree,
+      changedFiles: changedFiles?.map((file) => file.path) ?? [],
+    };
+  }, [
+    projectName,
+    activeFilePath,
+    activeFileDoc,
+    editorTabs,
+    projectFiles,
+    changedFiles,
+  ]);
+
+  const workspaceContextRef = useRef(workspaceContext);
+  workspaceContextRef.current = workspaceContext;
+
+  const convex = useConvex();
+  const writeFileAtPath = useMutation(api.projectFiles.writeFileAtPath);
+  const { openTab } = useEditorTabs(projectId);
+
+  const writeFileRef = useRef(writeFileAtPath);
+  writeFileRef.current = writeFileAtPath;
+  const openTabRef = useRef(openTab);
+  openTabRef.current = openTab;
+  const convexRef = useRef(convex);
+  convexRef.current = convex;
+  const projectIdRef = useRef(projectId);
+  projectIdRef.current = projectId;
+
+  const addToolOutputRef = useRef<
+    | ((args: {
+        tool: string;
+        toolCallId: string;
+        output?: unknown;
+        state?: "output-error";
+        errorText?: string;
+      }) => void)
+    | null
+  >(null);
 
   const initialMessages = useMemo(
     () =>
@@ -96,22 +189,116 @@ function WorkspaceAiChatSession({
       new DefaultChatTransport({
         api: "/api/chat",
         body: () => ({
-          projectName,
-          activeFile,
           model: autoModel ? POLARIS_CHAT_MODEL : modelIdRef.current,
+          workspace: workspaceContextRef.current,
         }),
       }),
-    [projectName, activeFile, autoModel],
+    [autoModel],
   );
 
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  const { messages, sendMessage, status, setMessages, stop, error } = useChat({
+  const {
+    messages,
+    sendMessage,
+    status,
+    setMessages,
+    stop,
+    error,
+    addToolOutput,
+  } = useChat({
     id: session.id,
     messages: initialMessages,
     transport,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    onToolCall: async ({ toolCall }) => {
+      if (toolCall.dynamic) return;
+
+      const add = addToolOutputRef.current;
+      if (!add) return;
+
+      const pid = projectIdRef.current as Id<"projects">;
+
+      try {
+        if (toolCall.toolName === "writeFile") {
+          const input = toolCall.input as { path: string; content: string };
+          const result = await writeFileRef.current({
+            projectId: pid,
+            path: input.path,
+            content: input.content,
+          });
+          add({
+            tool: "writeFile",
+            toolCallId: toolCall.toolCallId,
+            output: result,
+          });
+          openTabRef.current({ kind: "file", path: result.path });
+          toast.success(
+            result.created
+              ? `Created ${result.path}`
+              : `Updated ${result.path}`,
+          );
+          return;
+        }
+
+        if (toolCall.toolName === "readFile") {
+          const input = toolCall.input as { path: string };
+          const file = await convexRef.current.query(
+            api.projectFiles.getByPath,
+            { projectId: pid, path: input.path },
+          );
+          if (!file || file.kind !== "file") {
+            add({
+              tool: "readFile",
+              toolCallId: toolCall.toolCallId,
+              state: "output-error",
+              errorText: `File not found: ${input.path}`,
+            });
+            return;
+          }
+          add({
+            tool: "readFile",
+            toolCallId: toolCall.toolCallId,
+            output: { path: file.path, content: file.content ?? "" },
+          });
+          return;
+        }
+
+        if (toolCall.toolName === "listFiles") {
+          const input = toolCall.input as { prefix?: string };
+          const files = await convexRef.current.query(
+            api.projectFiles.listByProject,
+            { projectId: pid },
+          );
+          const paths = files
+            .filter((file) => file.kind === "file")
+            .map((file) => file.path)
+            .filter((path) =>
+              input.prefix ? path.startsWith(input.prefix) : true,
+            )
+            .sort();
+          add({
+            tool: "listFiles",
+            toolCallId: toolCall.toolCallId,
+            output: { paths, count: paths.length },
+          });
+        }
+      } catch (err) {
+        const errorText =
+          err instanceof Error ? err.message : "Tool execution failed";
+        add({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          state: "output-error",
+          errorText,
+        });
+        toast.error("Could not apply file change", { description: errorText });
+      }
+    },
   });
+
+  addToolOutputRef.current = addToolOutput as typeof addToolOutputRef.current;
 
   useEffect(() => {
     const userMessages = messages.filter((message) => message.role === "user");
@@ -134,12 +321,14 @@ function WorkspaceAiChatSession({
 
   const suggestions = useMemo(
     () => [
-      activeFile ? `Explain ${activeFile}` : "Summarize this project",
-      "Find bugs in selection",
+      activeFilePath
+        ? `Explain ${activeFilePath}`
+        : "Summarize this project",
+      "Create a Card component file",
+      "What files are in this project?",
       "Suggest refactor",
-      "Write tests",
     ],
-    [activeFile],
+    [activeFilePath],
   );
 
   const resetChat = () => {
@@ -160,7 +349,9 @@ function WorkspaceAiChatSession({
     void sendMessage({ text: value });
   };
 
-  const visibleMessages = messages.filter((message) => message.id !== "welcome");
+  const visibleMessages = messages.filter(
+    (message) => message.id !== "welcome",
+  );
   const showWelcome = visibleMessages.length === 0;
 
   return (
@@ -210,12 +401,21 @@ function WorkspaceAiChatSession({
         >
           {projectName ?? "Workspace"}
         </Badge>
-        {activeFile ? (
+        {activeFilePath ? (
           <Badge
             variant="outline"
             className="h-5 max-w-[140px] truncate rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
+            title={activeFilePath}
           >
-            {activeFile}
+            {activeFilePath}
+          </Badge>
+        ) : null}
+        {(workspaceContext.fileTree?.length ?? 0) > 0 ? (
+          <Badge
+            variant="outline"
+            className="h-5 rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
+          >
+            {workspaceContext.fileTree!.length} files in context
           </Badge>
         ) : null}
       </div>
@@ -225,7 +425,7 @@ function WorkspaceAiChatSession({
           {showWelcome ? (
             <ConversationEmptyState
               title="Ask Polaris"
-              description="Get help with code, refactors, and project planning"
+              description="Create files, edit code, or plan changes in this project"
               icon={
                 <Image
                   src="/logo.svg"
@@ -271,24 +471,62 @@ function WorkspaceAiChatSession({
                           : "rounded-xl border border-ws-border/60 bg-ws-bg/80 px-3 py-2 text-[13px] leading-relaxed text-ws-text-secondary"
                       }
                     >
-                      {message.parts.map((part, index) =>
-                        part.type === "text" ? (
-                          message.role === "assistant" ? (
+                      {message.parts.map((part, index) => {
+                        if (part.type === "text") {
+                          return message.role === "assistant" ? (
                             <MessageResponse key={`${message.id}-${index}`}>
                               {part.text}
                             </MessageResponse>
                           ) : (
                             <p key={`${message.id}-${index}`}>{part.text}</p>
-                          )
-                        ) : part.type === "file" ? (
-                          <p
-                            key={`${message.id}-${index}`}
-                            className="text-[11px] text-ws-text-muted"
-                          >
-                            Attached: {part.filename ?? "file"}
-                          </p>
-                        ) : null,
-                      )}
+                          );
+                        }
+
+                        if (part.type === "file") {
+                          return (
+                            <p
+                              key={`${message.id}-${index}`}
+                              className="text-[11px] text-ws-text-muted"
+                            >
+                              Attached: {part.filename ?? "file"}
+                            </p>
+                          );
+                        }
+
+                        if (isToolUIPart(part)) {
+                          const name = getToolName(part);
+                          return (
+                            <Tool
+                              key={`${message.id}-${index}`}
+                              defaultOpen={part.state !== "output-available"}
+                              className="mb-2 border-ws-border bg-ws-panel"
+                            >
+                              <ToolHeader
+                                type={part.type as `tool-${string}`}
+                                state={part.state}
+                                title={name}
+                              />
+                              <ToolContent className="space-y-2 p-3 text-[11px]">
+                                {"input" in part && part.input != null ? (
+                                  <ToolInput input={part.input} />
+                                ) : null}
+                                <ToolOutput
+                                  output={
+                                    "output" in part ? part.output : undefined
+                                  }
+                                  errorText={
+                                    "errorText" in part
+                                      ? part.errorText
+                                      : undefined
+                                  }
+                                />
+                              </ToolContent>
+                            </Tool>
+                          );
+                        }
+
+                        return null;
+                      })}
                     </MessageContent>
                   </Message>
                 );

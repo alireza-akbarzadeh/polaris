@@ -274,6 +274,113 @@ export const create = mutation({
   },
 });
 
+/**
+ * Create or overwrite a file by full path (e.g. `src/components/Card.tsx`).
+ * Creates missing parent folders automatically.
+ */
+export const writeFileAtPath = mutation({
+  args: {
+    projectId: v.id("projects"),
+    path: v.string(),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectWriteAccess(ctx, args.projectId);
+
+    const normalized = args.path
+      .trim()
+      .replace(/^\/+/, "")
+      .replace(/\/+/g, "/");
+    if (!normalized || normalized.includes("..")) {
+      throw new Error("Invalid file path");
+    }
+
+    const segments = normalized.split("/").filter(Boolean);
+    if (segments.length === 0) {
+      throw new Error("Invalid file path");
+    }
+
+    const fileName = segments[segments.length - 1]!;
+    if (fileName.includes("/") || !fileName) {
+      throw new Error("Invalid file name");
+    }
+
+    let parentId: Id<"projectFiles"> | undefined;
+    let parentPath: string | undefined;
+
+    for (let i = 0; i < segments.length - 1; i++) {
+      const folderName = segments[i]!;
+      const folderPath = buildPath(parentPath, folderName);
+      const existing = await ctx.db
+        .query("projectFiles")
+        .withIndex("by_project_path", (q) =>
+          q.eq("projectId", args.projectId).eq("path", folderPath),
+        )
+        .unique();
+
+      if (existing) {
+        if (existing.kind !== "folder") {
+          throw new Error(`Path conflict: ${folderPath} is a file`);
+        }
+        parentId = existing._id;
+        parentPath = existing.path;
+        continue;
+      }
+
+      const now = Date.now();
+      parentId = await ctx.db.insert("projectFiles", {
+        projectId: args.projectId,
+        name: folderName,
+        parentId,
+        kind: "folder",
+        path: folderPath,
+        updatedAt: now,
+      });
+      parentPath = folderPath;
+    }
+
+    const filePath = buildPath(parentPath, fileName);
+    const existingFile = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project_path", (q) =>
+        q.eq("projectId", args.projectId).eq("path", filePath),
+      )
+      .unique();
+
+    const now = Date.now();
+
+    if (existingFile) {
+      if (existingFile.kind !== "file") {
+        throw new Error(`Path conflict: ${filePath} is a folder`);
+      }
+      const stillChanged =
+        existingFile.syncedContent === undefined ||
+        args.content !== existingFile.syncedContent;
+      await ctx.db.patch(existingFile._id, {
+        content: args.content,
+        updatedAt: now,
+        staged: stillChanged ? existingFile.staged === true : false,
+      });
+      await touchProject(ctx, args.projectId);
+      return { path: filePath, created: false };
+    }
+
+    await ctx.db.insert("projectFiles", {
+      projectId: args.projectId,
+      name: fileName,
+      parentId,
+      kind: "file",
+      content: args.content,
+      syncedContent: undefined,
+      staged: false,
+      path: filePath,
+      updatedAt: now,
+    });
+    await touchProject(ctx, args.projectId);
+    return { path: filePath, created: true };
+  },
+});
+
 export const updateContent = mutation({
   args: {
     projectId: v.id("projects"),

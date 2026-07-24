@@ -7,6 +7,7 @@ import {
   ChevronRightIcon,
   DownloadIcon,
   ExternalLinkIcon,
+  FolderPlusIcon,
   GiftIcon,
   InfoIcon,
   Loader2Icon,
@@ -338,6 +339,18 @@ export function WorkspaceSwitcher({
             onClick={() => {
               close();
               runCommand("openSettings");
+            }}
+          />
+
+          <MenuRow
+            icon={<FolderPlusIcon />}
+            label="Open new project"
+            trailing={
+              <span className="text-[11px] text-ws-text-muted">⌘N</span>
+            }
+            onClick={() => {
+              close();
+              runCommand("openNewProject");
             }}
           />
 

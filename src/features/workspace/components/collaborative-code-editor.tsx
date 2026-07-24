@@ -13,6 +13,12 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { CodeEditor } from "@/features/workspace/components/code-editor";
 import { LiveblocksFileRoom } from "@/features/workspace/components/liveblocks-file-room";
 import {
+  clearFileContentDraft,
+  loadFileContentDraft,
+  resolveSeedContent,
+  saveFileContentDraft,
+} from "@/features/workspace/lib/file-content-drafts";
+import {
   collabCursorTheme,
   softCollaboratorColor,
 } from "@/features/workspace/lib/collab-cursor-theme";
@@ -22,6 +28,8 @@ type CollaborativeCodeEditorProps = {
   projectId: string;
   filePath: string;
   initialContent: string;
+  /** Server `updatedAt` — used to decide whether a local draft wins on refresh. */
+  serverUpdatedAt?: number;
   readOnly?: boolean;
   onContentChange?: (content: string) => void;
 };
@@ -30,6 +38,7 @@ function LiveblocksCollaborativeEditor({
   projectId,
   filePath,
   initialContent,
+  serverUpdatedAt,
   readOnly = false,
   onContentChange,
 }: CollaborativeCodeEditorProps) {
@@ -40,14 +49,67 @@ function LiveblocksCollaborativeEditor({
 
   const viewRef = useRef<EditorView | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingContentRef = useRef<string | null>(null);
   const seededRef = useRef(false);
+  const initialContentRef = useRef(initialContent);
+  const serverUpdatedAtRef = useRef(serverUpdatedAt);
+  const onContentChangeRef = useRef(onContentChange);
+  const readOnlyRef = useRef(readOnly);
+
   const [ready, setReady] = useState(false);
   const [value, setValue] = useState(initialContent);
   const [collabExtensions, setCollabExtensions] = useState<Extension[] | null>(
     null,
   );
 
+  initialContentRef.current = initialContent;
+  serverUpdatedAtRef.current = serverUpdatedAt;
+  onContentChangeRef.current = onContentChange;
+  readOnlyRef.current = readOnly;
+
+  const persistToServerRef = useRef<(content: string) => void>(() => {});
+  persistToServerRef.current = (content: string) => {
+    pendingContentRef.current = null;
+    void updateContent({
+      projectId: projectId as Id<"projects">,
+      path: filePath,
+      content,
+    })
+      .then(() => {
+        const draft = loadFileContentDraft(projectId, filePath);
+        if (draft && draft.content === content) {
+          clearFileContentDraft(projectId, filePath);
+        }
+      })
+      .catch(() => {
+        saveFileContentDraft(projectId, filePath, content);
+      });
+  };
+
+  const scheduleServerSave = (content: string) => {
+    pendingContentRef.current = content;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      persistToServerRef.current(content);
+    }, 800);
+  };
+
+  const flushPendingSave = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingContentRef.current;
+    if (pending === null || readOnlyRef.current) return;
+    persistToServerRef.current(pending);
+  };
+
   useEffect(() => {
+    seededRef.current = false;
+    setReady(false);
+    setCollabExtensions(null);
+
     if (status !== "connected") return;
 
     const provider = getYjsProviderForRoom(room);
@@ -67,17 +129,28 @@ function LiveblocksCollaborativeEditor({
     let onSync: ((isSynced: boolean) => void) | null = null;
 
     const finishSetup = () => {
-      if (!seededRef.current && ytext.length === 0 && initialContent) {
-        ydoc.transact(() => {
-          ytext.insert(0, initialContent);
-        });
+      if (!seededRef.current && ytext.length === 0) {
+        const draft = loadFileContentDraft(projectId, filePath);
+        const seed = resolveSeedContent(
+          initialContentRef.current,
+          serverUpdatedAtRef.current,
+          draft,
+        );
+        if (seed) {
+          ydoc.transact(() => {
+            ytext.insert(0, seed);
+          });
+          if (seed !== initialContentRef.current && !readOnlyRef.current) {
+            scheduleServerSave(seed);
+          }
+        }
         seededRef.current = true;
       }
       setValue(ytext.toString());
       setCollabExtensions([
         collabCursorTheme,
         ...(yCollab(ytext, provider.awareness, {
-          undoManager: readOnly ? false : undoManager,
+          undoManager: readOnlyRef.current ? false : undoManager,
         }) as Extension[]),
       ]);
       setReady(true);
@@ -97,39 +170,33 @@ function LiveblocksCollaborativeEditor({
     const onText = () => {
       const text = ytext.toString();
       setValue(text);
-      onContentChange?.(text);
+      onContentChangeRef.current?.(text);
 
-      if (readOnly) return;
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        void updateContent({
-          projectId: projectId as Id<"projects">,
-          path: filePath,
-          content: text,
-        }).catch(() => {});
-      }, 800);
+      if (readOnlyRef.current) return;
+      saveFileContentDraft(projectId, filePath, text);
+      scheduleServerSave(text);
     };
 
     ytext.observe(onText);
+
+    const onPageHide = () => flushPendingSave();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushPendingSave();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       if (onSync) provider.off("sync", onSync);
       ytext.unobserve(onText);
       undoManager.destroy();
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushPendingSave();
       setCollabExtensions(null);
       setReady(false);
     };
-  }, [
-    filePath,
-    initialContent,
-    onContentChange,
-    projectId,
-    readOnly,
-    room,
-    status,
-    updateContent,
-  ]);
+  }, [filePath, projectId, room, status]);
 
   useEffect(() => {
     if (!ready || readOnly) return;

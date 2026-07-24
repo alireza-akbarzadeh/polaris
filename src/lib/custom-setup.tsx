@@ -4,7 +4,12 @@ import {
   closeBracketsKeymap,
   completionKeymap,
 } from "@codemirror/autocomplete";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
 import {
   bracketMatching,
   defaultHighlightStyle,
@@ -70,6 +75,7 @@ export function createEditorSetup(options: EditorSetupOptions): Extension[] {
     crosshairCursor(),
     highlightSelectionMatches(),
     keymap.of([
+      indentWithTab,
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...searchKeymap,

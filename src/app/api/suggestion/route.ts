@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { POLARIS_COMPLETION_MODEL } from "@/lib/ai/gemini-model";
 import { SUGGESTION_PROMPT } from "@/lib/prompt";
 
 const suggestionRequestSchema = z.object({
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   try {
     const body = suggestionRequestSchema.parse(await request.json());
     const { text } = await generateText({
-      model: google("gemini-3.5-flash"),
+      model: google(POLARIS_COMPLETION_MODEL),
       prompt: buildPrompt(body),
     });
 

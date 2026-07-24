@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { POLARIS_COMPLETION_MODEL } from "@/lib/ai/gemini-model";
 import { COMMIT_MESSAGE_PROMPT } from "@/lib/prompt";
 
 const stagedFileSchema = z.object({
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
   try {
     const body = commitMessageRequestSchema.parse(await request.json());
     const { text } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google(POLARIS_COMPLETION_MODEL),
       prompt: buildPrompt(body),
     });
 

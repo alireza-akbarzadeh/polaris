@@ -271,6 +271,7 @@ type FileEditorContentProps = {
   projectId: string;
   filePath: string;
   initialContent: string;
+  serverUpdatedAt?: number;
   readOnly: boolean;
 };
 
@@ -278,6 +279,7 @@ function FileEditorContent({
   projectId,
   filePath,
   initialContent,
+  serverUpdatedAt,
   readOnly,
 }: FileEditorContentProps) {
   const [activeTab, setActiveTab] = useState<EditorPanelTab>("code");
@@ -306,6 +308,7 @@ function FileEditorContent({
             projectId={projectId}
             filePath={filePath}
             initialContent={initialContent}
+            serverUpdatedAt={serverUpdatedAt}
             readOnly={readOnly}
             onContentChange={setContent}
           />
@@ -376,6 +379,7 @@ export function FileEditorView({
       projectId={projectId}
       filePath={filePath}
       initialContent={file.content ?? ""}
+      serverUpdatedAt={file.updatedAt}
       readOnly={readOnly}
     />
   );

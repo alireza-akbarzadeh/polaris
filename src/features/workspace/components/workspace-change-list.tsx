@@ -22,6 +22,7 @@ import {
   useSetAllChangedStaged,
   useSetFileStaged,
 } from "@/features/workspace/hooks/use-project-files";
+import { clearFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import { cn } from "@/lib/utils";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -196,12 +197,13 @@ export function WorkspaceChangeList({
                 )
               }
               onDiscard={() =>
-                void runAction(file.path, () =>
-                  discardFileChanges({
+                void runAction(file.path, async () => {
+                  await discardFileChanges({
                     projectId: projectId as Id<"projects">,
                     path: file.path,
-                  }),
-                )
+                  });
+                  clearFileContentDraft(projectId, file.path);
+                })
               }
             />
           ))
