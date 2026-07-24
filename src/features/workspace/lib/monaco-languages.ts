@@ -25,8 +25,8 @@ function configureTypescriptReact(monaco: Monaco) {
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.NodeJs,
-    // React (classic emit) — most reliable for Monaco JSX/TSX parsing.
-    jsx: ts.JsxEmit.React,
+    // Preserve keeps JSX in the AST so checkers + highlighters work well.
+    jsx: ts.JsxEmit.Preserve,
     jsxFactory: "React.createElement",
     jsxFragmentFactory: "React.Fragment",
     reactNamespace: "React",

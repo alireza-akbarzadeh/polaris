@@ -380,6 +380,47 @@
   color: #2b2d30;
 }
 
+/* JSX/TSX decorations from monaco-jsx-syntax-highlight (Monaco has no built-in JSX colors) */
+.polaris-monaco .jsx-tag-name {
+  color: #d5b778;
+}
+.polaris-monaco .jsx-tag-angle-bracket {
+  color: #808080;
+}
+.polaris-monaco .jsx-tag-attribute-key {
+  color: #c77dbb;
+}
+.polaris-monaco .jsx-expression-braces {
+  color: #cf8e6d;
+}
+.polaris-monaco .jsx-text {
+  color: #bcbec4;
+}
+
+:root:not(.dark) .polaris-monaco .jsx-tag-name {
+  color: #0033b3;
+}
+:root:not(.dark) .polaris-monaco .jsx-tag-angle-bracket {
+  color: #5a5d63;
+}
+:root:not(.dark) .polaris-monaco .jsx-tag-attribute-key {
+  color: #871094;
+}
+:root:not(.dark) .polaris-monaco .jsx-expression-braces {
+  color: #0033b3;
+}
+:root:not(.dark) .polaris-monaco .jsx-text {
+  color: #080808;
+}
+
+/* Nested tag depth accents */
+.polaris-monaco .jsx-tag-order-1 { color: #56a8f5; }
+.polaris-monaco .jsx-tag-order-2 { color: #6aab73; }
+.polaris-monaco .jsx-tag-order-3 { color: #c77dbb; }
+:root:not(.dark) .polaris-monaco .jsx-tag-order-1 { color: #00627a; }
+:root:not(.dark) .polaris-monaco .jsx-tag-order-2 { color: #007e1f; }
+:root:not(.dark) .polaris-monaco .jsx-tag-order-3 { color: #871094; }
+
 /* y-monaco remote cursors / selections */
 .yRemoteSelection {
   opacity: 0.28;

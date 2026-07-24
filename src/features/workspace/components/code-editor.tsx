@@ -17,6 +17,7 @@ import {
   configureMonacoLanguages,
   monacoModelPath,
 } from "@/features/workspace/lib/monaco-languages";
+import { registerJsxSyntaxHighlight } from "@/features/workspace/lib/monaco-jsx-highlight";
 import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
 import {
   POLARIS_THEME_DARK,
@@ -174,6 +175,10 @@ export function CodeEditor({
       const ai = registerAiInlineCompletions(monaco, ed, filePath, fileName);
       if (ai) disposablesRef.current.push(ai);
     }
+
+    // Monaco validates JSX but does not color tags — decorate .tsx/.jsx.
+    const jsxHighlight = registerJsxSyntaxHighlight(monaco, ed, filePath);
+    if (jsxHighlight) disposablesRef.current.push(jsxHighlight);
 
     editorRef.current = ed;
     onCreateEditor?.(ed);
