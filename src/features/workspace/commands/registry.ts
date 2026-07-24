@@ -20,7 +20,8 @@ export type CommandId =
   | "showGit"
   | "showGitChanges"
   | "showGitHistory"
-  | "findInFiles";
+  | "findInFiles"
+  | "formatDocument";
 
 export type Command = {
   id: CommandId;
@@ -145,6 +146,15 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+f",
     allowInInput: true,
     run: () => store().openFindInFiles(),
+  },
+  {
+    id: "formatDocument",
+    allowInInput: true,
+    run: () => {
+      void import("@/features/workspace/lib/format-active-document").then(
+        ({ formatActiveDocument }) => formatActiveDocument(),
+      );
+    },
   },
 ];
 

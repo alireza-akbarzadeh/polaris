@@ -1,24 +1,26 @@
 "use client";
 
-import type { Extension } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
-import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
-import CodeMirror from "@uiw/react-codemirror";
+import Editor, { type OnMount } from "@monaco-editor/react";
+import type { editor, IDisposable } from "monaco-editor";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import {
-  languageExtensionForPath,
+  monacoLanguageForPath,
   supportsAiSuggestion,
 } from "@/features/workspace/lib/editor-languages";
-import { formatDocumentExtension } from "@/features/workspace/lib/format-extension";
+import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
+import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
+import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
+import { configureMonacoJsx } from "@/features/workspace/lib/monaco-jsx";
+import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
+import {
+  POLARIS_THEME_DARK,
+  POLARIS_THEME_LIGHT,
+  registerPolarisThemes,
+} from "@/features/workspace/lib/monaco-theme";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
-import { createEditorSetup } from "@/lib/custom-setup";
-import { suggestion } from "@/lib/suggestion-extension";
-
-const EDITOR_FONT =
-  "var(--font-editor-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
 
 function fileNameFromPath(filePath: string) {
   const parts = filePath.split("/");
@@ -30,8 +32,9 @@ type CodeEditorProps = {
   filePath: string;
   onChange?: (value: string) => void;
   readOnly?: boolean;
-  collabExtensions?: Extension[];
-  onCreateEditor?: (view: EditorView) => void;
+  /** When true, React does not own the document — Yjs / MonacoBinding does. */
+  collaborative?: boolean;
+  onCreateEditor?: (editor: editor.IStandaloneCodeEditor) => void;
 };
 
 export function CodeEditor({
@@ -39,7 +42,7 @@ export function CodeEditor({
   filePath,
   onChange,
   readOnly = false,
-  collabExtensions,
+  collaborative = false,
   onCreateEditor,
 }: CodeEditorProps) {
   const fileName = fileNameFromPath(filePath);
@@ -50,7 +53,8 @@ export function CodeEditor({
     () => false,
   );
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
-  const viewRef = useRef<EditorView | null>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const disposablesRef = useRef<IDisposable[]>([]);
 
   const pendingReveal = useWorkspaceStore((s) => s.pendingEditorReveal);
   const clearPendingEditorReveal = useWorkspaceStore(
@@ -67,106 +71,140 @@ export function CodeEditor({
   const bracketMatching = useEditorSettingsStore((s) => s.bracketMatching);
   const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
 
-  const editorFontTheme = useMemo(
-    () =>
-      EditorView.theme({
-        ".cm-content": {
-          fontFamily: EDITOR_FONT,
-          fontSize: `${fontSize}px`,
-          lineHeight: String(lineHeight),
-        },
-        ".cm-gutters": {
-          fontFamily: EDITOR_FONT,
-          fontSize: `${fontSize}px`,
-        },
-      }),
-    [fontSize, lineHeight],
+  const language = useMemo(
+    () => monacoLanguageForPath(filePath),
+    [filePath],
   );
 
-  const extensions = useMemo(() => {
-    const setup = createEditorSetup({
+  const theme = isDark ? POLARIS_THEME_DARK : POLARIS_THEME_LIGHT;
+
+  const options = useMemo(
+    () =>
+      buildMonacoOptions(
+        {
+          fontSize,
+          tabSize,
+          wordWrap,
+          lineNumbers,
+          highlightActiveLine,
+          bracketMatching,
+          lineHeight,
+        },
+        readOnly,
+      ),
+    [
+      bracketMatching,
+      fontSize,
+      highlightActiveLine,
+      lineHeight,
+      lineNumbers,
+      readOnly,
       tabSize,
       wordWrap,
-      lineNumbers,
-      highlightActiveLine,
-      bracketMatching,
-    });
-    const base = [
-      ...setup,
-      ...languageExtensionForPath(filePath),
-      ...(readOnly ? [] : [formatDocumentExtension(filePath, tabSize)]),
-    ];
-    const withCollab = collabExtensions?.length
-      ? [...base, ...collabExtensions]
-      : base;
-
-    if (readOnly || !supportsAiSuggestion(filePath)) {
-      return withCollab;
-    }
-
-    return [...withCollab, ...suggestion(fileName)];
-  }, [
-    bracketMatching,
-    collabExtensions,
-    fileName,
-    filePath,
-    highlightActiveLine,
-    lineNumbers,
-    readOnly,
-    tabSize,
-    wordWrap,
-  ]);
-
-  const theme = useMemo(
-    () => [isDark ? vscodeDark : vscodeLight, editorFontTheme],
-    [editorFontTheme, isDark],
+    ],
   );
 
-  const isCollab = Boolean(collabExtensions?.length);
-
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view || !pendingReveal || pendingReveal.path !== filePath) {
+    const ed = editorRef.current;
+    if (!ed || !pendingReveal || pendingReveal.path !== filePath) {
       return;
     }
-    if (view.state.doc.length === 0 && !value) {
-      return;
-    }
+
+    const model = ed.getModel();
+    if (!model) return;
+    if (model.getValueLength() === 0 && !value) return;
 
     const lineNumber = Math.min(
       Math.max(1, pendingReveal.line),
-      view.state.doc.lines,
+      model.getLineCount(),
     );
-    const line = view.state.doc.line(lineNumber);
-    const col = Math.max(0, pendingReveal.column - 1);
-    const from = Math.min(line.from + col, line.to);
-    const to =
+    const maxCol = model.getLineMaxColumn(lineNumber);
+    const startCol = Math.min(Math.max(1, pendingReveal.column), maxCol);
+    const endCol =
       pendingReveal.matchLength != null
-        ? Math.min(from + pendingReveal.matchLength, line.to)
-        : from;
+        ? Math.min(startCol + pendingReveal.matchLength, maxCol)
+        : startCol;
 
-    view.dispatch({
-      selection: { anchor: from, head: to },
-      effects: EditorView.scrollIntoView(from, { y: "center" }),
+    ed.setSelection({
+      startLineNumber: lineNumber,
+      startColumn: startCol,
+      endLineNumber: lineNumber,
+      endColumn: endCol,
     });
-    view.focus();
+    ed.revealPositionInCenter({ lineNumber, column: startCol });
+    ed.focus();
     clearPendingEditorReveal();
   }, [clearPendingEditorReveal, filePath, pendingReveal, value]);
 
+  useEffect(() => {
+    return () => {
+      for (const d of disposablesRef.current) d.dispose();
+      disposablesRef.current = [];
+    };
+  }, []);
+
+  const handleMount: OnMount = (ed, monaco) => {
+    for (const d of disposablesRef.current) d.dispose();
+    disposablesRef.current = [];
+
+    registerPolarisThemes(monaco);
+    monaco.editor.setTheme(theme);
+    configureMonacoJsx(monaco);
+
+    // Ensure model language + URI extension stay aligned for JSX/TSX.
+    const model = ed.getModel();
+    if (model && language) {
+      monaco.editor.setModelLanguage(model, language);
+    }
+
+    if (!readOnly) {
+      disposablesRef.current.push(
+        registerFormatAction(ed, monaco, filePath, tabSize),
+      );
+    }
+
+    disposablesRef.current.push({
+      dispose: registerActiveMonacoEditor(filePath, ed),
+    });
+
+    if (!readOnly && supportsAiSuggestion(filePath)) {
+      const ai = registerAiInlineCompletions(monaco, ed, filePath, fileName);
+      if (ai) disposablesRef.current.push(ai);
+    }
+
+    editorRef.current = ed;
+    onCreateEditor?.(ed);
+  };
+
   return (
-    <CodeMirror
-      value={isCollab ? undefined : value}
-      height="100%"
-      theme={theme}
-      extensions={extensions}
-      onChange={isCollab ? undefined : onChange}
-      readOnly={readOnly}
-      basicSetup={false}
-      onCreateEditor={(view) => {
-        viewRef.current = view;
-        onCreateEditor?.(view);
-      }}
-      className="h-full [&_.cm-editor]:h-full [&_.cm-scroller]:min-h-full [&_.cm-scroller]:overflow-auto"
-    />
+    <div className="polaris-monaco h-full min-h-0">
+      <Editor
+        height="100%"
+        // URI must keep the real extension (.tsx/.jsx) so Monaco enables JSX.
+        path={filePath}
+        language={language}
+        theme={theme}
+        value={collaborative ? undefined : value}
+        onChange={
+          collaborative
+            ? undefined
+            : (next) => {
+                if (next == null) return;
+                onChange?.(next);
+              }
+        }
+        options={options}
+        beforeMount={(monaco) => {
+          registerPolarisThemes(monaco);
+          configureMonacoJsx(monaco);
+        }}
+        onMount={handleMount}
+        loading={
+          <div className="flex h-full items-center justify-center bg-ws-bg text-[12px] text-ws-text-muted">
+            Loading editor…
+          </div>
+        }
+      />
+    </div>
   );
 }

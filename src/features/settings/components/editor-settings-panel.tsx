@@ -213,6 +213,15 @@ export function EditorSettingsPanel() {
         />
       </SettingRow>
 
+      <Separator />
+
+      <SettingRow
+        label="Formatter"
+        description="Prettier formats JS/TS, JSON, CSS, HTML, and Markdown. Use the Prettier button in the editor toolbar, or ⇧⌥F / ⌘⇧I."
+      >
+        <span className="text-[12px] text-muted-foreground">Prettier</span>
+      </SettingRow>
+
       <div className="flex justify-end pt-4">
         <Button
           type="button"

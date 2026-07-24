@@ -26,6 +26,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { PrettierIcon } from "@/features/workspace/components/prettier-icon";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
@@ -68,18 +69,29 @@ export function WorkspaceSettingsDialog() {
 
         <CommandGroup heading="Preferences">
           <CommandItem
-            value="advanced editor settings preferences shortcuts"
+            value="advanced editor settings preferences shortcuts formatter prettier format"
             onSelect={() => openEditorPage("settings")}
           >
             <Settings2Icon />
             <span>Advanced Settings</span>
           </CommandItem>
           <CommandItem
-            value="keyboard shortcuts keymap"
+            value="keyboard shortcuts keymap format document formatter prettier"
             onSelect={() => openEditorPage("shortcuts")}
           >
             <KeyboardIcon />
             <span>Keyboard Shortcuts</span>
+          </CommandItem>
+          <CommandItem
+            value="format document formatter prettier code style beautify"
+            onSelect={() => {
+              runCommand("formatDocument");
+              closeSettings();
+            }}
+          >
+            <PrettierIcon className="size-4" />
+            <span>Format Document</span>
+            <CommandShortcut>⇧⌥F</CommandShortcut>
           </CommandItem>
           <CommandItem
             value="new project create workspace"

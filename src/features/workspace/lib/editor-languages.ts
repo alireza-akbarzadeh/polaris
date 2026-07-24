@@ -1,40 +1,25 @@
-import { css } from "@codemirror/lang-css";
-import { html } from "@codemirror/lang-html";
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
-import type { Extension } from "@codemirror/state";
-
-/** CodeMirror language support keyed by file extension. */
-export function languageExtensionForPath(filePath: string): Extension[] {
+/** Monaco language id keyed by file path. */
+export function monacoLanguageForPath(filePath: string): string {
   const lower = filePath.toLowerCase();
 
-  if (/\.(tsx?|jsx?|mjs|cjs)$/.test(lower)) {
-    return [
-      javascript({
-        typescript: /\.tsx?$/.test(lower),
-        jsx: /\.(tsx?|jsx)$/.test(lower),
-      }),
-    ];
-  }
+  if (/\.tsx$/.test(lower)) return "typescript";
+  if (/\.ts$/.test(lower)) return "typescript";
+  if (/\.jsx$/.test(lower)) return "javascript";
+  if (/\.(mjs|cjs|js)$/.test(lower)) return "javascript";
+  if (/\.(css|module\.css)$/.test(lower)) return "css";
+  if (/\.(html?|htm)$/.test(lower)) return "html";
+  if (/\.(json|jsonc)$/.test(lower)) return "json";
+  if (/\.(md|mdx|markdown)$/.test(lower)) return "markdown";
+  if (/\.ya?ml$/.test(lower)) return "yaml";
+  if (/\.svg$/.test(lower)) return "xml";
+  if (/\.sql$/.test(lower)) return "sql";
+  if (/\.py$/.test(lower)) return "python";
+  if (/\.rs$/.test(lower)) return "rust";
+  if (/\.go$/.test(lower)) return "go";
+  if (/\.sh$/.test(lower)) return "shell";
+  if (/\.toml$/.test(lower)) return "ini";
 
-  if (/\.(css|module\.css)$/.test(lower)) {
-    return [css()];
-  }
-
-  if (/\.(html?|htm)$/.test(lower)) {
-    return [html()];
-  }
-
-  if (/\.(json|jsonc)$/.test(lower)) {
-    return [json()];
-  }
-
-  if (/\.(md|mdx|markdown)$/.test(lower)) {
-    return [markdown()];
-  }
-
-  return [];
+  return "plaintext";
 }
 
 export function supportsAiSuggestion(filePath: string): boolean {
@@ -58,5 +43,8 @@ export function getLanguageLabel(filePath: string | null | undefined): string {
     return "Plain Text";
   }
   const lower = filePath.toLowerCase();
-  return LANGUAGE_LABELS.find((entry) => entry.test.test(lower))?.label ?? "Plain Text";
+  return (
+    LANGUAGE_LABELS.find((entry) => entry.test.test(lower))?.label ??
+    "Plain Text"
+  );
 }

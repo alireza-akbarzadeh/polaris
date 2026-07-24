@@ -57,7 +57,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         id: "format",
         label: "Format document",
         keys: "⇧ ⌥ F",
-        description: "Prettier (also ⌘ ⇧ I)",
+        description: "Prettier formatter (also ⌘ ⇧ I)",
       },
       {
         id: "ai-accept",

@@ -15,7 +15,7 @@ Staged changes:
 {stagedChanges}
 `;
 
-export const SUGGESTION_PROMPT = `You are a code suggestion assistant.
+export const SUGGESTION_PROMPT = `You are a code suggestion assistant that writes Copilot-style inline completions.
 
 <context>
 <file_name>{fileName}</file_name>
@@ -36,13 +36,20 @@ export const SUGGESTION_PROMPT = `You are a code suggestion assistant.
 <instructions>
 Follow these steps IN ORDER:
 
-1. First, look at next_lines. If next_lines contains ANY code, check if it continues from where the cursor is. If it does, return empty string immediately - the code is already written.
+1. First, look at next_lines. If next_lines contains ANY code, check if it continues from where the cursor is. If it does, return an empty string immediately — the code is already written.
 
-2. Check if before_cursor ends with a complete statement (;, }, )). If yes, return empty string.
+2. Check if before_cursor ends with a complete statement (;, }, )). If yes, return an empty string.
 
-3. Only if steps 1 and 2 don't apply: suggest what should be typed at the cursor position, using context from full_code.
+3. Only if steps 1 and 2 don't apply: suggest ONLY the text that should be typed at the cursor, using context from full_code.
 
-Your suggestion is inserted immediately after the cursor, so never suggest code that's already in the file.
+Output rules (critical):
+- Return ONLY the raw code characters to insert at the cursor.
+- Do NOT wrap in markdown fences (\`\`\` or \`\`\`typescript).
+- Do NOT wrap in XML/HTML tags like <suggestion>.
+- Do NOT add explanations, labels, or language names.
+- Do NOT repeat text that is already before or after the cursor.
+- Prefer a short completion (usually the rest of the current line, or a few lines max).
+- If you have nothing useful to suggest, return an empty string.
 </instructions>`;
 
 export const QUICK_EDIT_PROMPT = `You are a code editing assistant. Edit the selected code based on the user's instruction.

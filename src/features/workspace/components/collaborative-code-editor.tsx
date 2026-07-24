@@ -1,17 +1,17 @@
 "use client";
 
-import type { Extension } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
 import { getYjsProviderForRoom } from "@liveblocks/yjs";
-import { yCollab } from "y-codemirror.next";
-import * as Y from "yjs";
+import type { editor } from "monaco-editor";
 import { useMutation } from "convex/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { Awareness } from "y-protocols/awareness";
+import * as Y from "yjs";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CodeEditor } from "@/features/workspace/components/code-editor";
 import { LiveblocksFileRoom } from "@/features/workspace/components/liveblocks-file-room";
+import { softCollaboratorColor } from "@/features/workspace/lib/collab-cursor-theme";
 import {
   clearFileContentDraft,
   loadFileContentDraft,
@@ -20,10 +20,7 @@ import {
   shouldApplyExternalContent,
   shouldReseedLiveblocks,
 } from "@/features/workspace/lib/file-content-drafts";
-import {
-  collabCursorTheme,
-  softCollaboratorColor,
-} from "@/features/workspace/lib/collab-cursor-theme";
+import { MonacoBinding } from "@/features/workspace/lib/y-monaco-binding";
 import { useRoom, useStatus, useUpdateMyPresence } from "@/liveblocks.config";
 
 type CollaborativeCodeEditorProps = {
@@ -64,7 +61,8 @@ function LiveblocksCollaborativeEditor({
   const updateMyPresence = useUpdateMyPresence();
   const updateContent = useMutation(api.projectFiles.updateContent);
 
-  const viewRef = useRef<EditorView | null>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const bindingRef = useRef<MonacoBinding | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingContentRef = useRef<string | null>(null);
   /** Bumped when AI/Convex content is applied so stale debounced saves are dropped. */
@@ -77,20 +75,23 @@ function LiveblocksCollaborativeEditor({
   const acceptRemoteEditsRef = useRef(false);
   const applyingExternalRef = useRef(false);
   const lastEmptyReseedAtRef = useRef(0);
-  const undoManagerRef = useRef<Y.UndoManager | null>(null);
   const ytextRef = useRef<Y.Text | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
-
-  const [ready, setReady] = useState(false);
-  const [value, setValue] = useState(initialContent);
-  const [collabExtensions, setCollabExtensions] = useState<Extension[] | null>(
-    null,
+  const awarenessRef = useRef<Awareness | null>(null);
+  const persistToServerRef = useRef<(content: string, epoch: number) => void>(
+    () => {},
   );
 
-  initialContentRef.current = initialContent;
-  serverUpdatedAtRef.current = serverUpdatedAt;
-  onContentChangeRef.current = onContentChange;
-  readOnlyRef.current = readOnly;
+  const [ready, setReady] = useState(false);
+  const [collabReady, setCollabReady] = useState(false);
+  const [value, setValue] = useState(initialContent);
+
+  useEffect(() => {
+    initialContentRef.current = initialContent;
+    serverUpdatedAtRef.current = serverUpdatedAt;
+    onContentChangeRef.current = onContentChange;
+    readOnlyRef.current = readOnly;
+  }, [initialContent, onContentChange, readOnly, serverUpdatedAt]);
 
   const knownContent = () =>
     loadFileContentDraft(projectId, filePath)?.content ||
@@ -105,47 +106,49 @@ function LiveblocksCollaborativeEditor({
     pendingContentRef.current = null;
   };
 
-  const persistToServerRef = useRef<(content: string, epoch: number) => void>(
-    () => {},
-  );
-  persistToServerRef.current = (content: string, epoch: number) => {
-    if (epoch !== saveEpochRef.current) return;
+  useEffect(() => {
+    persistToServerRef.current = (content: string, epoch: number) => {
+      if (epoch !== saveEpochRef.current) return;
 
-    const known = knownContent();
-    // Never let an empty buffer wipe a known non-empty file (AI write / draft).
-    if (!content && known) return;
+      const known =
+        loadFileContentDraft(projectId, filePath)?.content ||
+        initialContentRef.current ||
+        value;
+      // Never let an empty buffer wipe a known non-empty file (AI write / draft).
+      if (!content && known) return;
 
-    // If draft is newer and differs, a stale autosave lost the race with AI.
-    const draft = loadFileContentDraft(projectId, filePath);
-    if (
-      draft &&
-      draft.content &&
-      draft.content !== content &&
-      Date.now() - draft.updatedAt < 5000 &&
-      draft.content.length >= content.length
-    ) {
-      return;
-    }
+      // If draft is newer and differs, a stale autosave lost the race with AI.
+      const draft = loadFileContentDraft(projectId, filePath);
+      if (
+        draft &&
+        draft.content &&
+        draft.content !== content &&
+        Date.now() - draft.updatedAt < 5000 &&
+        draft.content.length >= content.length
+      ) {
+        return;
+      }
 
-    pendingContentRef.current = null;
+      pendingContentRef.current = null;
 
-    void updateContent({
-      projectId: projectId as Id<"projects">,
-      path: filePath,
-      content,
-    })
-      .then(() => {
-        if (epoch !== saveEpochRef.current) return;
-        const latest = loadFileContentDraft(projectId, filePath);
-        if (latest && latest.content === content) {
-          clearFileContentDraft(projectId, filePath, { keepMemory: true });
-        }
+      void updateContent({
+        projectId: projectId as Id<"projects">,
+        path: filePath,
+        content,
       })
-      .catch(() => {
-        if (epoch !== saveEpochRef.current) return;
-        saveFileContentDraft(projectId, filePath, content);
-      });
-  };
+        .then(() => {
+          if (epoch !== saveEpochRef.current) return;
+          const latest = loadFileContentDraft(projectId, filePath);
+          if (latest && latest.content === content) {
+            clearFileContentDraft(projectId, filePath, { keepMemory: true });
+          }
+        })
+        .catch(() => {
+          if (epoch !== saveEpochRef.current) return;
+          saveFileContentDraft(projectId, filePath, content);
+        });
+    };
+  }, [filePath, projectId, updateContent, value]);
 
   const scheduleServerSave = (content: string) => {
     const known = knownContent();
@@ -167,10 +170,10 @@ function LiveblocksCollaborativeEditor({
     }
     if (readOnlyRef.current) return;
 
-    const fromView = viewRef.current?.state.doc.toString();
+    const fromEditor = editorRef.current?.getModel()?.getValue();
     const fromYjs = ytextRef.current?.toString();
     const content =
-      fromView ?? fromYjs ?? pendingContentRef.current ?? null;
+      fromEditor ?? fromYjs ?? pendingContentRef.current ?? null;
     if (content === null) return;
 
     const known = knownContent();
@@ -189,31 +192,33 @@ function LiveblocksCollaborativeEditor({
     onContentChangeRef.current?.(text);
   };
 
-  const bindCollabExtensions = (ytext: Y.Text) => {
-    const provider = getYjsProviderForRoom(room);
-    undoManagerRef.current?.destroy();
-    const undoManager = new Y.UndoManager(ytext);
-    undoManagerRef.current = undoManager;
-    setCollabExtensions([
-      collabCursorTheme,
-      ...(yCollab(ytext, provider.awareness, {
-        undoManager: readOnlyRef.current ? false : undoManager,
-      }) as Extension[]),
-    ]);
-    setReady(true);
+  const bindMonaco = (ed: editor.IStandaloneCodeEditor) => {
+    const ytext = ytextRef.current;
+    const awareness = awarenessRef.current;
+    const model = ed.getModel();
+    if (!ytext || !awareness || !model) return;
+
+    bindingRef.current?.destroy();
+    bindingRef.current = new MonacoBinding(
+      ytext,
+      model,
+      new Set([ed]),
+      awareness,
+    );
+    setCollabReady(true);
   };
 
   /**
    * Apply Convex/AI content into the open editor without blanking the UI.
-   * Prefer a CodeMirror replace (y-collab syncs safely) over raw Y.Text mutation.
+   * Prefer a Monaco model replace (y-monaco syncs safely) over raw Y.Text mutation.
    */
   const applyExternalContent = (next: string) => {
     if (!next) return;
     if (applyingExternalRef.current) return;
 
     const currentY = ytextRef.current?.toString() ?? "";
-    const currentView = viewRef.current?.state.doc.toString() ?? value;
-    if (currentY === next || currentView === next) {
+    const currentEditor = editorRef.current?.getModel()?.getValue() ?? value;
+    if (currentY === next || currentEditor === next) {
       saveFileContentDraft(projectId, filePath, next);
       publishLocal(next);
       return;
@@ -225,19 +230,16 @@ function LiveblocksCollaborativeEditor({
     saveFileContentDraft(projectId, filePath, next);
     publishLocal(next);
 
-    const view = viewRef.current;
-    if (view && ready) {
+    const ed = editorRef.current;
+    const model = ed?.getModel();
+    if (ed && model && ready) {
       try {
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: next,
-          },
-          userEvent: "external",
-        });
+        const fullRange = model.getFullModelRange();
+        ed.executeEdits("polaris-external", [
+          { range: fullRange, text: next },
+        ]);
       } catch (error) {
-        console.warn("[collab] CM external replace failed", error);
+        console.warn("[collab] Monaco external replace failed", error);
         const ytext = ytextRef.current;
         const ydoc = ydocRef.current;
         if (ytext && ydoc) {
@@ -269,9 +271,13 @@ function LiveblocksCollaborativeEditor({
   useEffect(() => {
     seededRef.current = false;
     acceptRemoteEditsRef.current = false;
+    // Reset collab gate when the room/file identity changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional lifecycle reset
     setReady(false);
-    setCollabExtensions(null);
-    viewRef.current = null;
+    setCollabReady(false);
+    bindingRef.current?.destroy();
+    bindingRef.current = null;
+    editorRef.current = null;
     saveEpochRef.current += 1;
     cancelPendingSave();
 
@@ -279,9 +285,11 @@ function LiveblocksCollaborativeEditor({
 
     const provider = getYjsProviderForRoom(room);
     const ydoc = provider.getYDoc();
+    // Keep the historical key so open Liveblocks rooms stay continuous.
     const ytext = ydoc.getText("codemirror");
     ytextRef.current = ytext;
     ydocRef.current = ydoc;
+    awarenessRef.current = provider.awareness as unknown as Awareness;
 
     const self = room.getSelf();
     const userColor = self?.info?.color ?? "#90A4AE";
@@ -328,7 +336,10 @@ function LiveblocksCollaborativeEditor({
       const text = ytext.toString() || resolveSeed();
       publishLocal(text);
       acceptRemoteEditsRef.current = true;
-      bindCollabExtensions(ytext);
+      setReady(true);
+      if (editorRef.current) {
+        bindMonaco(editorRef.current);
+      }
     };
 
     const onText = () => {
@@ -391,15 +402,16 @@ function LiveblocksCollaborativeEditor({
       acceptRemoteEditsRef.current = false;
       if (onSync) provider.off("sync", onSync);
       ytext.unobserve(onText);
-      undoManagerRef.current?.destroy();
-      undoManagerRef.current = null;
+      bindingRef.current?.destroy();
+      bindingRef.current = null;
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
       flushPendingSave();
       ytextRef.current = null;
       ydocRef.current = null;
-      setCollabExtensions(null);
+      awarenessRef.current = null;
       setReady(false);
+      setCollabReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- room/file identity
   }, [filePath, projectId, room, status]);
@@ -423,6 +435,7 @@ function LiveblocksCollaborativeEditor({
     ) {
       // Recover UI if we somehow show empty while Convex/AI has content.
       if (!value && initialContent) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- recover empty buffer from server
         publishLocal(initialContent);
       }
       return;
@@ -440,23 +453,32 @@ function LiveblocksCollaborativeEditor({
   ]);
 
   useEffect(() => {
-    if (!ready || readOnly) return;
+    if (!collabReady || readOnly) return;
 
     const publish = () => {
-      const view = viewRef.current;
-      if (!view) return;
-      const sel = view.state.selection.main;
+      const ed = editorRef.current;
+      if (!ed) return;
+      const sel = ed.getSelection();
+      if (!sel) return;
+      const model = ed.getModel();
+      if (!model) return;
+      const anchor = model.getOffsetAt({
+        lineNumber: sel.positionLineNumber,
+        column: sel.positionColumn,
+      });
+      const head = model.getOffsetAt({
+        lineNumber: sel.selectionStartLineNumber,
+        column: sel.selectionStartColumn,
+      });
       updateMyPresence({
-        cursor: { anchor: sel.anchor, head: sel.head },
+        cursor: { anchor, head },
       });
     };
 
     publish();
     const interval = window.setInterval(publish, 500);
     return () => window.clearInterval(interval);
-  }, [ready, readOnly, updateMyPresence]);
-
-  const extensions = useMemo(() => collabExtensions ?? [], [collabExtensions]);
+  }, [collabReady, readOnly, updateMyPresence]);
 
   const displayValue =
     value ||
@@ -473,51 +495,36 @@ function LiveblocksCollaborativeEditor({
         scheduleServerSave(next);
       };
 
-  if (status === "connecting" || status === "initial" || !ready) {
-    return (
-      <div className="relative h-full min-h-0">
-        <CodeEditor
-          value={displayValue}
-          filePath={filePath}
-          readOnly={readOnly}
-          onChange={fallbackOnChange}
-        />
-        {status === "disconnected" ? null : (
-          <div className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-ws-panel/90 px-2 py-1 text-[10px] text-ws-text-muted">
-            Connecting live collaboration…
-          </div>
-        )}
-      </div>
-    );
-  }
+  const connecting =
+    status === "connecting" || status === "initial" || !ready;
+  const reconnecting = status === "disconnected";
 
-  if (status === "disconnected") {
-    return (
-      <div className="relative h-full min-h-0">
-        <CodeEditor
-          value={displayValue}
-          filePath={filePath}
-          readOnly={readOnly}
-          onChange={fallbackOnChange}
-        />
+  return (
+    <div className="relative h-full min-h-0">
+      <CodeEditor
+        value={displayValue}
+        filePath={filePath}
+        readOnly={readOnly}
+        collaborative={ready && !reconnecting}
+        onChange={ready && !reconnecting ? undefined : fallbackOnChange}
+        onCreateEditor={(ed) => {
+          editorRef.current = ed;
+          if (ready) {
+            bindMonaco(ed);
+          }
+        }}
+      />
+      {connecting && status !== "disconnected" ? (
+        <div className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-ws-panel/90 px-2 py-1 text-[10px] text-ws-text-muted">
+          Connecting live collaboration…
+        </div>
+      ) : null}
+      {reconnecting ? (
         <div className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-ws-panel/90 px-2 py-1 text-[10px] text-ws-text-muted">
           Reconnecting live collaboration…
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <CodeEditor
-      value={displayValue}
-      filePath={filePath}
-      readOnly={readOnly}
-      collabExtensions={extensions}
-      onChange={undefined}
-      onCreateEditor={(view) => {
-        viewRef.current = view;
-      }}
-    />
+      ) : null}
+    </div>
   );
 }
 

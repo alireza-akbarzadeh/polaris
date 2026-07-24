@@ -8,6 +8,7 @@ import {
   DownloadIcon,
   GlobeIcon,
   ExternalLinkIcon,
+  Loader2Icon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -26,12 +27,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CollaborativeCodeEditor } from "@/features/workspace/components/collaborative-code-editor";
+import { PrettierIcon } from "@/features/workspace/components/prettier-icon";
 import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace-preview-panel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import {
   useProjectFile,
   useProjectFiles,
 } from "@/features/workspace/hooks/use-project-files";
+import { canFormatPath } from "@/features/workspace/lib/format-code";
+import { formatActiveDocument } from "@/features/workspace/lib/format-active-document";
 import {
   isPreviewableFile,
   isProjectPreviewable,
@@ -74,13 +78,17 @@ function buildPagePrompt(filePath: string, content: string) {
 function EditorPageActions({
   filePath,
   content,
+  readOnly,
 }: {
   filePath: string;
   content: string;
+  readOnly: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [formatting, setFormatting] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileName = fileNameFromPath(filePath);
+  const canFormat = canFormatPath(filePath) && !readOnly;
   const openInQuery = useMemo(
     () => buildPagePrompt(filePath, content),
     [content, filePath],
@@ -121,6 +129,16 @@ function EditorPageActions({
     URL.revokeObjectURL(url);
   };
 
+  const formatPage = async () => {
+    if (!canFormat || formatting) return;
+    setFormatting(true);
+    try {
+      await formatActiveDocument();
+    } finally {
+      setFormatting(false);
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="mb-px flex items-center gap-0.5 self-center">
@@ -133,14 +151,14 @@ function EditorPageActions({
               aria-label={copied ? "Copied" : "Copy page"}
               onClick={() => void copyPage()}
               className={cn(
-                "size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+                "size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
                 copied && "text-emerald-400 hover:text-emerald-400",
               )}
             >
               {copied ? (
-                <CheckIcon className="size-3.5" strokeWidth={2} />
+                <CheckIcon className="size-4" strokeWidth={2} />
               ) : (
-                <CopyIcon className="size-3.5" strokeWidth={1.75} />
+                <CopyIcon className="size-4" strokeWidth={2} />
               )}
             </Button>
           </TooltipTrigger>
@@ -161,9 +179,9 @@ function EditorPageActions({
               size="icon-sm"
               aria-label="Download page"
               onClick={downloadPage}
-              className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+              className="size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
             >
-              <DownloadIcon className="size-3.5" strokeWidth={1.75} />
+              <DownloadIcon className="size-4" strokeWidth={2} />
             </Button>
           </TooltipTrigger>
           <TooltipContent
@@ -172,6 +190,37 @@ function EditorPageActions({
             className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-ws-text"
           >
             <span className="text-xs">Download page</span>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Format document"
+              disabled={!canFormat || formatting}
+              onClick={() => void formatPage()}
+              className="size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text disabled:opacity-40"
+            >
+              {formatting ? (
+                <Loader2Icon className="size-4 animate-spin" strokeWidth={2} />
+              ) : (
+                <PrettierIcon className="size-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            sideOffset={6}
+            className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-ws-text"
+          >
+            <span className="text-xs">
+              {canFormat
+                ? "Format with Prettier (⇧⌥F)"
+                : "Formatting not available"}
+            </span>
           </TooltipContent>
         </Tooltip>
 
@@ -184,11 +233,11 @@ function EditorPageActions({
                   variant="ghost"
                   size="sm"
                   aria-label="Open in"
-                  className="h-6 gap-1 rounded-sm px-1.5 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+                  className="h-7 gap-1 rounded-sm px-1.5 text-xs text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
                 >
-                  <ExternalLinkIcon className="size-3.5" strokeWidth={1.75} />
+                  <ExternalLinkIcon className="size-4" strokeWidth={2} />
                   Open in
-                  <ChevronDownIcon className="size-3 opacity-70" />
+                  <ChevronDownIcon className="size-3.5 opacity-70" />
                 </Button>
               </OpenInTrigger>
             </TooltipTrigger>
@@ -266,7 +315,11 @@ function EditorViewTabs({
         ) : null}
       </div>
 
-      <EditorPageActions filePath={filePath} content={content} />
+      <EditorPageActions
+        filePath={filePath}
+        content={content}
+        readOnly={readOnly}
+      />
     </div>
   );
 }

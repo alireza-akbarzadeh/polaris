@@ -2,6 +2,8 @@ import ky from "ky";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { normalizeInlineSuggestion } from "@/lib/normalize-inline-suggestion";
+
 const suggestionRequestSchema = z.object({
   fileName: z.string(),
   code: z.string(),
@@ -22,7 +24,7 @@ type SuggestionResponse = z.infer<typeof suggestionResponseSchema>;
 
 export const fetcher = async (
   payload: SuggestionRequest,
-  signal: AbortSignal
+  signal: AbortSignal,
 ): Promise<string | null> => {
   try {
     const validatedPayload = suggestionRequestSchema.parse(payload);
@@ -37,8 +39,7 @@ export const fetcher = async (
       .json<SuggestionResponse>();
 
     const validatedResponse = suggestionResponseSchema.parse(response);
-
-    return validatedResponse.suggestion || null;
+    return normalizeInlineSuggestion(validatedResponse.suggestion);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return null;

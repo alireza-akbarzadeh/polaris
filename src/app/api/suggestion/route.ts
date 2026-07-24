@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { POLARIS_COMPLETION_MODEL } from "@/lib/ai/gemini-model";
+import { normalizeInlineSuggestion } from "@/lib/normalize-inline-suggestion";
 import { SUGGESTION_PROMPT } from "@/lib/prompt";
 
 const suggestionRequestSchema = z.object({
@@ -36,7 +37,8 @@ export async function POST(request: Request) {
       prompt: buildPrompt(body),
     });
 
-    return NextResponse.json({ suggestion: text.trim() });
+    const suggestion = normalizeInlineSuggestion(text) ?? "";
+    return NextResponse.json({ suggestion });
   } catch {
     return NextResponse.json({ suggestion: "" }, { status: 500 });
   }
