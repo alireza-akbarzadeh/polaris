@@ -12,14 +12,13 @@ import {
 
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 export type ConfirmOptions = {
   title: string;
@@ -82,28 +81,25 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
+            <Button
+              type="button"
+              variant="outline"
               className="border-ws-border bg-ws-hover text-ws-text hover:bg-ws-border"
-              onClick={(event) => {
-                event.preventDefault();
-                close(false);
-              }}
+              onClick={() => close(false)}
             >
               {pending?.cancelLabel ?? "Cancel"}
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
+              type="button"
               className={
                 pending?.tone === "danger"
                   ? "bg-ws-danger text-white hover:bg-ws-danger-bg-hover"
                   : "bg-ws-accent text-white hover:bg-ws-accent-hover"
               }
-              onClick={(event) => {
-                event.preventDefault();
-                close(true);
-              }}
+              onClick={() => close(true)}
             >
               {pending?.confirmLabel ?? "Continue"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -120,7 +120,7 @@ export const workspaceCommands: Command[] = [
     id: "showSearch",
     shortcut: "mod+shift+f",
     allowInInput: true,
-    run: () => showPanel("search"),
+    run: () => store().openFindInFiles(),
   },
   {
     id: "showGit",
@@ -144,7 +144,7 @@ export const workspaceCommands: Command[] = [
     id: "findInFiles",
     shortcut: "mod+shift+f",
     allowInInput: true,
-    run: () => showPanel("search"),
+    run: () => store().openFindInFiles(),
   },
 ];
 

@@ -28,6 +28,15 @@ export type TreeClipboard = {
   path: string;
 };
 
+export type EditorRevealTarget = {
+  path: string;
+  line: number;
+  column: number;
+  matchLength?: number;
+};
+
+export type SearchPanelMode = "text" | "file";
+
 export type EditorTabKind =
   | "welcome"
   | "file"
@@ -63,6 +72,9 @@ type WorkspaceState = WorkspacePrefs & {
   pendingChatAttachPaths: string[] | null;
   requestNewChat: boolean;
   terminalCwdRequest: string | null;
+  pendingEditorReveal: EditorRevealTarget | null;
+  searchFolderScope: string | null;
+  searchPanelMode: SearchPanelMode;
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
@@ -99,6 +111,14 @@ type WorkspaceState = WorkspacePrefs & {
   clearRequestNewChat: () => void;
   requestTerminalCwd: (cwd: string) => void;
   clearTerminalCwdRequest: () => void;
+  setPendingEditorReveal: (target: EditorRevealTarget | null) => void;
+  clearPendingEditorReveal: () => void;
+  setSearchFolderScope: (path: string | null) => void;
+  setSearchPanelMode: (mode: SearchPanelMode) => void;
+  openFindInFiles: (options?: {
+    folderScope?: string | null;
+    mode?: SearchPanelMode;
+  }) => void;
   hydrate: (prefs: Partial<WorkspacePrefs>) => void;
   getPersistablePrefs: () => WorkspacePrefs;
 };
@@ -147,6 +167,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   pendingChatAttachPaths: null,
   requestNewChat: false,
   terminalCwdRequest: null,
+  pendingEditorReveal: null,
+  searchFolderScope: null,
+  searchPanelMode: "text",
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
@@ -251,6 +274,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   requestTerminalCwd: (cwd) =>
     set({ terminalCwdRequest: cwd, terminalOpen: true }),
   clearTerminalCwdRequest: () => set({ terminalCwdRequest: null }),
+  setPendingEditorReveal: (target) => set({ pendingEditorReveal: target }),
+  clearPendingEditorReveal: () => set({ pendingEditorReveal: null }),
+  setSearchFolderScope: (path) => set({ searchFolderScope: path }),
+  setSearchPanelMode: (mode) => set({ searchPanelMode: mode }),
+  openFindInFiles: (options) =>
+    set({
+      leftPanelView: "search",
+      sidebarOpen: true,
+      searchFolderScope: options?.folderScope ?? null,
+      searchPanelMode: options?.mode ?? "text",
+    }),
   hydrate: (prefs) =>
     set((s) => ({
       sidebarOpen: prefs.sidebarOpen ?? s.sidebarOpen,

@@ -301,12 +301,15 @@ function FileEditorContent({
   const previewAvailable =
     isProjectPreviewable(projectPaths) || isPreviewableFile(filePath);
 
-  // When AI writes while this tab shows empty, pick up Convex/draft content.
+  // Keep local preview/chrome in sync with Convex/AI writes and drafts.
   useEffect(() => {
-    if (!content && seedContent) {
+    if (!seedContent) return;
+    if (seedContent === content) return;
+    // Empty UI with real content, or AI draft matching seed — adopt it.
+    if (!content || draft?.content === seedContent) {
       setContent(seedContent);
     }
-  }, [content, seedContent]);
+  }, [content, draft?.content, seedContent]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

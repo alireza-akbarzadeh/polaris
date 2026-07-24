@@ -49,6 +49,12 @@ export function saveFileContentDraft(
   path: string,
   content: string,
 ) {
+  // Never let an empty pulse erase a known non-empty draft.
+  const existing = loadFileContentDraft(projectId, path);
+  if (!content && existing?.content) {
+    return;
+  }
+
   const draft: FileContentDraft = {
     content,
     updatedAt: Date.now(),
@@ -136,10 +142,16 @@ export function shouldApplyExternalContent(args: {
   draft: FileContentDraft | null;
 }): boolean {
   const { ytextContent, serverContent, serverUpdatedAt, draft } = args;
-  if (!serverContent || serverContent === ytextContent) return false;
+  if (!serverContent) return false;
+  if (serverContent === ytextContent) return false;
 
   // Empty Liveblocks room with real server content — always apply.
   if (!ytextContent) return true;
+
+  // Fresh AI/tool draft matching server — force into the open editor.
+  if (draft && draft.content === serverContent) {
+    return true;
+  }
 
   // Local edits newer than this server snapshot win.
   if (

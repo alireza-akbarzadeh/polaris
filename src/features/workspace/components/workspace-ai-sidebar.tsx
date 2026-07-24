@@ -210,25 +210,37 @@ function WorkspaceAiChatSession({
     const pid = projectIdRef.current as Id<"projects">;
 
     try {
-      if (toolName === "writeFile") {
-        const typed = input as { path: string; content: string };
-        const result = await writeFileRef.current({
-          projectId: pid,
-          path: typed.path,
-          content: typed.content,
-        });
-        saveFileContentDraft(pid, result.path, typed.content);
-        add({
-          tool: "writeFile",
-          toolCallId,
-          output: result,
-        });
-        openTabRef.current({ kind: "file", path: result.path });
-        toast.success(
-          result.created ? `Created ${result.path}` : `Updated ${result.path}`,
-        );
-        return;
-      }
+        if (toolName === "writeFile") {
+          const typed = input as { path: string; content: string };
+          // Reject accidental empty overwrites of existing work.
+          if (typeof typed.content !== "string") {
+            add({
+              tool: "writeFile",
+              toolCallId,
+              state: "output-error",
+              errorText: "writeFile requires string content",
+            });
+            return;
+          }
+          const result = await writeFileRef.current({
+            projectId: pid,
+            path: typed.path,
+            content: typed.content,
+          });
+          saveFileContentDraft(pid, result.path, typed.content);
+          add({
+            tool: "writeFile",
+            toolCallId,
+            output: result,
+          });
+          openTabRef.current({ kind: "file", path: result.path });
+          toast.success(
+            result.created
+              ? `Created ${result.path}`
+              : `Updated ${result.path}`,
+          );
+          return;
+        }
 
       if (toolName === "readFile") {
         const typed = input as { path: string };

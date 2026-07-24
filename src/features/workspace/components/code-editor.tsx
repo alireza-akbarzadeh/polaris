@@ -5,7 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import CodeMirror from "@uiw/react-codemirror";
 import { useTheme } from "next-themes";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import {
@@ -13,6 +13,7 @@ import {
   supportsAiSuggestion,
 } from "@/features/workspace/lib/editor-languages";
 import { formatDocumentExtension } from "@/features/workspace/lib/format-extension";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { createEditorSetup } from "@/lib/custom-setup";
 import { suggestion } from "@/lib/suggestion-extension";
 
@@ -49,12 +50,20 @@ export function CodeEditor({
     () => false,
   );
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
+  const viewRef = useRef<EditorView | null>(null);
+
+  const pendingReveal = useWorkspaceStore((s) => s.pendingEditorReveal);
+  const clearPendingEditorReveal = useWorkspaceStore(
+    (s) => s.clearPendingEditorReveal,
+  );
 
   const fontSize = useEditorSettingsStore((s) => s.fontSize);
   const tabSize = useEditorSettingsStore((s) => s.tabSize);
   const wordWrap = useEditorSettingsStore((s) => s.wordWrap);
   const lineNumbers = useEditorSettingsStore((s) => s.lineNumbers);
-  const highlightActiveLine = useEditorSettingsStore((s) => s.highlightActiveLine);
+  const highlightActiveLine = useEditorSettingsStore(
+    (s) => s.highlightActiveLine,
+  );
   const bracketMatching = useEditorSettingsStore((s) => s.bracketMatching);
   const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
 
@@ -115,6 +124,35 @@ export function CodeEditor({
 
   const isCollab = Boolean(collabExtensions?.length);
 
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !pendingReveal || pendingReveal.path !== filePath) {
+      return;
+    }
+    if (view.state.doc.length === 0 && !value) {
+      return;
+    }
+
+    const lineNumber = Math.min(
+      Math.max(1, pendingReveal.line),
+      view.state.doc.lines,
+    );
+    const line = view.state.doc.line(lineNumber);
+    const col = Math.max(0, pendingReveal.column - 1);
+    const from = Math.min(line.from + col, line.to);
+    const to =
+      pendingReveal.matchLength != null
+        ? Math.min(from + pendingReveal.matchLength, line.to)
+        : from;
+
+    view.dispatch({
+      selection: { anchor: from, head: to },
+      effects: EditorView.scrollIntoView(from, { y: "center" }),
+    });
+    view.focus();
+    clearPendingEditorReveal();
+  }, [clearPendingEditorReveal, filePath, pendingReveal, value]);
+
   return (
     <CodeMirror
       value={isCollab ? undefined : value}
@@ -124,7 +162,10 @@ export function CodeEditor({
       onChange={isCollab ? undefined : onChange}
       readOnly={readOnly}
       basicSetup={false}
-      onCreateEditor={onCreateEditor}
+      onCreateEditor={(view) => {
+        viewRef.current = view;
+        onCreateEditor?.(view);
+      }}
       className="h-full [&_.cm-editor]:h-full [&_.cm-scroller]:min-h-full [&_.cm-scroller]:overflow-auto"
     />
   );

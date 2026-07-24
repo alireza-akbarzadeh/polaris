@@ -14,6 +14,8 @@ import {
   FolderPlusIcon,
   ListCollapseIcon,
   MoreHorizontalIcon,
+  SearchIcon,
+  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -49,6 +51,7 @@ import { Input } from "@/components/ui/input";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { HighlightedText } from "@/features/workspace/components/highlighted-text";
 import {
   useCreateProjectFile,
   useDeleteProjectFile,
@@ -62,6 +65,10 @@ import {
   buildFileTree,
   type FileTreeNode,
 } from "@/features/workspace/lib/file-tree";
+import {
+  collectFolderIdsFromTree,
+  filterFileTree,
+} from "@/features/workspace/lib/search";
 import {
   siblingNames,
   suggestUniqueName,
@@ -193,7 +200,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   const treeClipboard = useWorkspaceStore((s) => s.treeClipboard);
   const setTreeClipboard = useWorkspaceStore((s) => s.setTreeClipboard);
   const clearTreeClipboard = useWorkspaceStore((s) => s.clearTreeClipboard);
-  const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const openFindInFiles = useWorkspaceStore((s) => s.openFindInFiles);
   const setPendingChatAttachPaths = useWorkspaceStore(
     (s) => s.setPendingChatAttachPaths,
   );
@@ -201,10 +208,19 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
   const requestTerminalCwd = useWorkspaceStore((s) => s.requestTerminalCwd);
   const setAiPanelOpen = useWorkspaceStore((s) => s.toggleAiPanel);
 
+  const [treeFilter, setTreeFilter] = useState("");
+
   const tree = useMemo(
     () => (files ? buildFileTree(files) : undefined),
     [files],
   );
+
+  const filteredTree = useMemo(() => {
+    if (!tree) return undefined;
+    return filterFileTree(tree, treeFilter);
+  }, [tree, treeFilter]);
+
+  const isFiltering = treeFilter.trim().length > 0;
 
   const canPaste = Boolean(
     treeClipboard && treeClipboard.projectId === projectId,
@@ -215,10 +231,15 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
       return;
     }
 
+    if (isFiltering && filteredTree) {
+      setOpenFolderIds(new Set(collectFolderIdsFromTree(filteredTree)));
+      return;
+    }
+
     if (collapseKey === 0) {
       setOpenFolderIds(new Set(collectFolderIds(tree)));
     }
-  }, [tree, collapseKey]);
+  }, [tree, filteredTree, collapseKey, isFiltering]);
 
   useEffect(() => {
     if (!tree || focusedId !== null) {
@@ -449,9 +470,12 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     [requestTerminalCwd],
   );
 
-  const findInFolder = useCallback(() => {
-    setLeftPanelView("search");
-  }, [setLeftPanelView]);
+  const findInFolder = useCallback(
+    (folderPath = "") => {
+      openFindInFiles({ folderScope: folderPath || null, mode: "text" });
+    },
+    [openFindInFiles],
+  );
 
   const attachToChat = useCallback(
     (path: string, kind: "file" | "folder", asNewChat: boolean) => {
@@ -485,7 +509,10 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         return;
       }
 
-      const visibleItems = flattenVisibleTree(tree, openFolderIds);
+      const visibleItems = flattenVisibleTree(
+        filteredTree ?? tree,
+        openFolderIds,
+      );
       if (visibleItems.length === 0) {
         return;
       }
@@ -600,6 +627,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     [
       copyItem,
       cutItem,
+      filteredTree,
       focusedId,
       openFolderIds,
       pasteInto,
@@ -691,6 +719,8 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
           onNewFile={() => startCreate("file")}
           onNewFolder={() => startCreate("folder")}
           onCollapseAll={collapseAll}
+          filter={treeFilter}
+          onFilterChange={setTreeFilter}
         />
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -707,6 +737,8 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
     );
   }
 
+  const visibleTree = filteredTree ?? tree ?? [];
+
   return (
     <div className="flex h-full flex-col">
       <TreeToolbar
@@ -714,6 +746,8 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         onNewFile={() => startCreate("file")}
         onNewFolder={() => startCreate("folder")}
         onCollapseAll={collapseAll}
+        filter={treeFilter}
+        onFilterChange={setTreeFilter}
       />
 
       <ContextMenu>
@@ -724,7 +758,12 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
             key={collapseKey}
             onKeyDown={handleTreeKeyDown}
           >
-            {tree?.map((node) => (
+            {isFiltering && visibleTree.length === 0 ? (
+              <p className="px-2 py-2 text-[11px] text-ws-text-muted">
+                No matching files
+              </p>
+            ) : null}
+            {visibleTree.map((node) => (
               <FileTreeItem
                 key={node.id}
                 node={node}
@@ -734,7 +773,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
                 onToggleFolder={toggleFolder}
                 focusedId={focusedId}
                 onFocusItem={setFocusedId}
-                pendingCreate={pendingCreate}
+                pendingCreate={isFiltering ? null : pendingCreate}
                 onStartCreate={startCreate}
                 renderPendingCreate={renderPendingCreate}
                 canPaste={canPaste && canEdit}
@@ -761,9 +800,10 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
                 onFindInFolder={findInFolder}
                 onAddToChat={(path, kind) => attachToChat(path, kind, false)}
                 onAddToNewChat={(path, kind) => attachToChat(path, kind, true)}
+                highlightQuery={treeFilter}
               />
             ))}
-            {canEdit ? renderPendingCreate(undefined, 0) : null}
+            {!isFiltering && canEdit ? renderPendingCreate(undefined, 0) : null}
           </nav>
         </ContextMenuTrigger>
         <FileTreeMenuContent {...backgroundMenuProps} />
@@ -785,27 +825,52 @@ function TreeToolbar({
   onNewFolder,
   onCollapseAll,
   canEdit,
+  filter,
+  onFilterChange,
 }: {
   onNewFile: () => void;
   onNewFolder: () => void;
   onCollapseAll: () => void;
   canEdit: boolean;
+  filter: string;
+  onFilterChange: (value: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 border-b border-ws-border-subtle px-1 py-1">
-      {canEdit ? (
-        <>
-          <TreeToolbarButton label="New File" onClick={onNewFile}>
-            <FilePlusIcon className="size-3.5" />
-          </TreeToolbarButton>
-          <TreeToolbarButton label="New Folder" onClick={onNewFolder}>
-            <FolderPlusIcon className="size-3.5" />
-          </TreeToolbarButton>
-        </>
-      ) : null}
-      <TreeToolbarButton label="Collapse All" onClick={onCollapseAll}>
-        <ListCollapseIcon className="size-3.5" />
-      </TreeToolbarButton>
+    <div className="shrink-0 border-b border-ws-border-subtle">
+      <div className="flex items-center gap-0.5 px-1 py-1">
+        {canEdit ? (
+          <>
+            <TreeToolbarButton label="New File" onClick={onNewFile}>
+              <FilePlusIcon className="size-3.5" />
+            </TreeToolbarButton>
+            <TreeToolbarButton label="New Folder" onClick={onNewFolder}>
+              <FolderPlusIcon className="size-3.5" />
+            </TreeToolbarButton>
+          </>
+        ) : null}
+        <TreeToolbarButton label="Collapse All" onClick={onCollapseAll}>
+          <ListCollapseIcon className="size-3.5" />
+        </TreeToolbarButton>
+      </div>
+      <div className="relative px-1.5 pb-1.5">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-3 -translate-y-1/2 text-ws-text-muted" />
+        <Input
+          value={filter}
+          onChange={(e) => onFilterChange(e.target.value)}
+          placeholder="Search files…"
+          className="h-6 border-ws-border bg-ws-bg pr-7 pl-7 text-[11px] text-ws-text placeholder:text-ws-text-muted focus-visible:border-ws-accent focus-visible:ring-0"
+        />
+        {filter ? (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => onFilterChange("")}
+            className="absolute top-1/2 right-3.5 -translate-y-1/2 rounded-sm p-0.5 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          >
+            <XIcon className="size-3" />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1054,10 +1119,11 @@ type FileTreeItemProps = {
   onCopyPath: (path: string) => void;
   onCopyRelativePath: (path: string) => void;
   onOpenInTerminal: (folderPath: string) => void;
-  onFindInFolder: () => void;
+  onFindInFolder: (folderPath?: string) => void;
   onAddToChat: (path: string, kind: "file" | "folder") => void;
   onAddToNewChat: (path: string, kind: "file" | "folder") => void;
   parentId?: Id<"projectFiles">;
+  highlightQuery?: string;
 };
 
 function FileTreeItem({
@@ -1089,6 +1155,7 @@ function FileTreeItem({
   onAddToChat,
   onAddToNewChat,
   parentId,
+  highlightQuery = "",
 }: FileTreeItemProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -1217,7 +1284,7 @@ function FileTreeItem({
     onOpenInTerminal: () => onOpenInTerminal(node.path),
     onAddToChat: () => onAddToChat(node.path, node.kind),
     onAddToNewChat: () => onAddToNewChat(node.path, node.kind),
-    onFindInFolder,
+    onFindInFolder: () => onFindInFolder(isFolder ? node.path : undefined),
     onCut: () => onCut(node.path),
     onCopy: () => onCopy(node.path),
     onPaste: () => void onPaste(pasteTargetId),
@@ -1271,7 +1338,7 @@ function FileTreeItem({
           onCancel={stopRename}
         />
       ) : (
-        <span className="truncate">{node.name}</span>
+        <HighlightedText text={node.name} query={highlightQuery} />
       )}
     </button>
   ) : renaming ? (
@@ -1311,7 +1378,7 @@ function FileTreeItem({
       <span className="size-3.5 shrink-0 [&_svg]:size-full">
         <FileIcon fileName={node.name} autoAssign />
       </span>
-      <span className="truncate">{node.name}</span>
+      <HighlightedText text={node.name} query={highlightQuery} />
     </Link>
   );
 
@@ -1384,6 +1451,7 @@ function FileTreeItem({
               onAddToChat={onAddToChat}
               onAddToNewChat={onAddToNewChat}
               parentId={node.id}
+              highlightQuery={highlightQuery}
             />
           ))}
           {renderPendingCreate(node.id, depth + 1)}
