@@ -1,10 +1,17 @@
 import type { UIMessage } from "ai";
 import { nanoid } from "nanoid";
 
+import {
+  DEFAULT_AI_CHAT_MODE,
+  isAiChatMode,
+  type AiChatMode,
+} from "@/lib/ai/chat-mode";
+
 export type AiChatSession = {
   id: string;
   title: string;
   subtitle?: string;
+  mode?: AiChatMode;
   messages: UIMessage[];
   createdAt: number;
   updatedAt: number;
@@ -28,7 +35,11 @@ export function loadAiChatSessions(projectId: string): AiChatSession[] {
     const raw = localStorage.getItem(storageKey(projectId));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as AiChatSession[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((session) => ({
+      ...session,
+      mode: isAiChatMode(session.mode) ? session.mode : DEFAULT_AI_CHAT_MODE,
+    }));
   } catch {
     return [];
   }
@@ -42,12 +53,16 @@ export function saveAiChatSessions(
   localStorage.setItem(storageKey(projectId), JSON.stringify(sessions));
 }
 
-export function createAiChatSession(title = "New chat"): AiChatSession {
+export function createAiChatSession(
+  title = "New chat",
+  mode: AiChatMode = DEFAULT_AI_CHAT_MODE,
+): AiChatSession {
   const now = Date.now();
   return {
     id: nanoid(),
     title,
     subtitle: "Start a conversation",
+    mode,
     messages: [],
     createdAt: now,
     updatedAt: now,

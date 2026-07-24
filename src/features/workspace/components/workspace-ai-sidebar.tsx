@@ -4,8 +4,10 @@ import { useChat } from "@ai-sdk/react";
 import { useConvex, useMutation } from "convex/react";
 import {
   ArrowLeftIcon,
+  ListTodoIcon,
   RotateCcwIcon,
   SparklesIcon,
+  WrenchIcon,
   XIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -15,6 +17,7 @@ import {
   getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
+  type ToolUIPart,
   type UIMessage,
 } from "ai";
 import { toast } from "sonner";
@@ -28,17 +31,12 @@ import {
 } from "@/components/ai-elements/conversation";
 import {
   Message,
+  MessageAction,
+  MessageActions,
   MessageContent,
 } from "@/components/ai-elements/message";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
@@ -46,6 +44,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { WorkspaceAiChatInput } from "@/features/workspace/components/workspace-ai-chat-input";
 import { WorkspaceAiHistoryPanel } from "@/features/workspace/components/workspace-ai-history-panel";
+import { WorkspaceAiPlanCard } from "@/features/workspace/components/workspace-ai-plan-card";
+import { WorkspaceAiTaskCard } from "@/features/workspace/components/workspace-ai-task-card";
 import { WorkspaceMessageResponse } from "@/features/workspace/components/workspace-message-response";
 import { AiCodeActionsProvider } from "@/features/workspace/context/ai-code-actions-context";
 import { runCommand } from "@/features/workspace/commands/registry";
@@ -65,11 +65,17 @@ import {
 } from "@/features/workspace/lib/ai-chat-sessions";
 import { saveFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import {
+  DEFAULT_AI_CHAT_MODE,
+  isAiChatMode,
+  type AiChatMode,
+} from "@/lib/ai/chat-mode";
 import { POLARIS_CHAT_MODEL } from "@/lib/ai/gemini-model";
 import {
   WORKSPACE_CONTEXT_LIMITS,
   type WorkspaceChatContext,
 } from "@/lib/ai/workspace-context";
+import { cn } from "@/lib/utils";
 
 type WorkspaceAiSidebarProps = {
   projectId: string;
@@ -110,8 +116,13 @@ function WorkspaceAiChatSession({
   const activeEditorTabId = useWorkspaceStore((s) => s.activeEditorTabId);
   const [modelId, setModelId] = useState(POLARIS_CHAT_MODEL);
   const [autoModel, setAutoModel] = useState(false);
+  const [mode, setMode] = useState<AiChatMode>(
+    isAiChatMode(session.mode) ? session.mode : DEFAULT_AI_CHAT_MODE,
+  );
   const modelIdRef = useRef(modelId);
   modelIdRef.current = modelId;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   const activeFilePath =
     editorTabs.find((tab) => tab.id === activeEditorTabId)?.path ??
@@ -181,6 +192,98 @@ function WorkspaceAiChatSession({
     | null
   >(null);
 
+  type ExecuteToolArgs = {
+    toolName: string;
+    toolCallId: string;
+    input: unknown;
+  };
+
+  const executeWorkspaceTool = useCallback(async ({
+    toolName,
+    toolCallId,
+    input,
+  }: ExecuteToolArgs) => {
+    const add = addToolOutputRef.current;
+    if (!add) return;
+
+    const pid = projectIdRef.current as Id<"projects">;
+
+    try {
+      if (toolName === "writeFile") {
+        const typed = input as { path: string; content: string };
+        const result = await writeFileRef.current({
+          projectId: pid,
+          path: typed.path,
+          content: typed.content,
+        });
+        saveFileContentDraft(pid, result.path, typed.content);
+        add({
+          tool: "writeFile",
+          toolCallId,
+          output: result,
+        });
+        openTabRef.current({ kind: "file", path: result.path });
+        toast.success(
+          result.created ? `Created ${result.path}` : `Updated ${result.path}`,
+        );
+        return;
+      }
+
+      if (toolName === "readFile") {
+        const typed = input as { path: string };
+        const file = await convexRef.current.query(api.projectFiles.getByPath, {
+          projectId: pid,
+          path: typed.path,
+        });
+        if (!file || file.kind !== "file") {
+          add({
+            tool: "readFile",
+            toolCallId,
+            state: "output-error",
+            errorText: `File not found: ${typed.path}`,
+          });
+          return;
+        }
+        add({
+          tool: "readFile",
+          toolCallId,
+          output: { path: file.path, content: file.content ?? "" },
+        });
+        return;
+      }
+
+      if (toolName === "listFiles") {
+        const typed = input as { prefix?: string };
+        const files = await convexRef.current.query(
+          api.projectFiles.listByProject,
+          { projectId: pid },
+        );
+        const paths = files
+          .filter((file) => file.kind === "file")
+          .map((file) => file.path)
+          .filter((path) =>
+            typed.prefix ? path.startsWith(typed.prefix) : true,
+          )
+          .sort();
+        add({
+          tool: "listFiles",
+          toolCallId,
+          output: { paths, count: paths.length },
+        });
+      }
+    } catch (err) {
+      const errorText =
+        err instanceof Error ? err.message : "Tool execution failed";
+      add({
+        tool: toolName,
+        toolCallId,
+        state: "output-error",
+        errorText,
+      });
+      toast.error("Could not apply file change", { description: errorText });
+    }
+  }, []);
+
   const initialMessages = useMemo(
     () =>
       session.messages.length > 0
@@ -195,6 +298,7 @@ function WorkspaceAiChatSession({
         api: "/api/chat",
         body: () => ({
           model: autoModel ? POLARIS_CHAT_MODEL : modelIdRef.current,
+          mode: modeRef.current,
           workspace: workspaceContextRef.current,
         }),
       }),
@@ -212,6 +316,7 @@ function WorkspaceAiChatSession({
     stop,
     error,
     addToolOutput,
+    regenerate,
   } = useChat({
     id: session.id,
     messages: initialMessages,
@@ -219,94 +324,31 @@ function WorkspaceAiChatSession({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onToolCall: async ({ toolCall }) => {
       if (toolCall.dynamic) return;
-
-      const add = addToolOutputRef.current;
-      if (!add) return;
-
-      const pid = projectIdRef.current as Id<"projects">;
-
-      try {
-        if (toolCall.toolName === "writeFile") {
-          const input = toolCall.input as { path: string; content: string };
-          const result = await writeFileRef.current({
-            projectId: pid,
-            path: input.path,
-            content: input.content,
-          });
-          // Keep a session draft so an open/empty Liveblocks room reseeds
-          // instead of overwriting this Convex write with "".
-          saveFileContentDraft(pid, result.path, input.content);
-          add({
-            tool: "writeFile",
-            toolCallId: toolCall.toolCallId,
-            output: result,
-          });
-          openTabRef.current({ kind: "file", path: result.path });
-          toast.success(
-            result.created
-              ? `Created ${result.path}`
-              : `Updated ${result.path}`,
-          );
-          return;
-        }
-
-        if (toolCall.toolName === "readFile") {
-          const input = toolCall.input as { path: string };
-          const file = await convexRef.current.query(
-            api.projectFiles.getByPath,
-            { projectId: pid, path: input.path },
-          );
-          if (!file || file.kind !== "file") {
-            add({
-              tool: "readFile",
-              toolCallId: toolCall.toolCallId,
-              state: "output-error",
-              errorText: `File not found: ${input.path}`,
-            });
-            return;
-          }
-          add({
-            tool: "readFile",
-            toolCallId: toolCall.toolCallId,
-            output: { path: file.path, content: file.content ?? "" },
-          });
-          return;
-        }
-
-        if (toolCall.toolName === "listFiles") {
-          const input = toolCall.input as { prefix?: string };
-          const files = await convexRef.current.query(
-            api.projectFiles.listByProject,
-            { projectId: pid },
-          );
-          const paths = files
-            .filter((file) => file.kind === "file")
-            .map((file) => file.path)
-            .filter((path) =>
-              input.prefix ? path.startsWith(input.prefix) : true,
-            )
-            .sort();
-          add({
-            tool: "listFiles",
-            toolCallId: toolCall.toolCallId,
-            output: { paths, count: paths.length },
-          });
-        }
-      } catch (err) {
-        const errorText =
-          err instanceof Error ? err.message : "Tool execution failed";
-        add({
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          state: "output-error",
-          errorText,
-        });
-        toast.error("Could not apply file change", { description: errorText });
-      }
+      await executeWorkspaceTool({
+        toolName: toolCall.toolName,
+        toolCallId: toolCall.toolCallId,
+        input: toolCall.input,
+      });
     },
   });
 
   addToolOutputRef.current = addToolOutput as typeof addToolOutputRef.current;
+
+  const retryToolPart = useCallback(
+    async (part: ToolUIPart) => {
+      if (!("toolCallId" in part) || !("input" in part)) return;
+      await executeWorkspaceTool({
+        toolName: getToolName(part),
+        toolCallId: part.toolCallId,
+        input: part.input,
+      });
+    },
+    [executeWorkspaceTool],
+  );
+
+  const retryLastResponse = useCallback(() => {
+    void regenerate();
+  }, [regenerate]);
 
   useEffect(() => {
     const userMessages = messages.filter((message) => message.role === "user");
@@ -318,6 +360,7 @@ function WorkspaceAiChatSession({
     onSessionChange({
       ...sessionRef.current,
       messages,
+      mode,
       title:
         userMessages.length > 0 && firstUserText
           ? deriveSessionTitle(firstUserText)
@@ -325,19 +368,38 @@ function WorkspaceAiChatSession({
       subtitle: deriveSessionSubtitle(messages),
       updatedAt: Date.now(),
     });
-  }, [messages, onSessionChange]);
+  }, [messages, mode, onSessionChange]);
 
-  const suggestions = useMemo(
-    () => [
-      activeFilePath
-        ? `Explain ${activeFilePath}`
-        : "Summarize this project",
+  const handleModeChange = useCallback(
+    (next: AiChatMode) => {
+      setMode(next);
+      onSessionChange({
+        ...sessionRef.current,
+        mode: next,
+        updatedAt: Date.now(),
+      });
+    },
+    [onSessionChange],
+  );
+
+  const suggestions = useMemo(() => {
+    if (mode === "plan") {
+      return [
+        activeFilePath
+          ? `Plan a refactor for ${activeFilePath}`
+          : "Plan the next feature for this project",
+        "Outline steps to add tests",
+        "What risks should we consider?",
+        "Break this into implementation tasks",
+      ];
+    }
+    return [
+      activeFilePath ? `Explain ${activeFilePath}` : "Summarize this project",
       "Create a Card component file",
       "What files are in this project?",
       "Suggest refactor",
-    ],
-    [activeFilePath],
-  );
+    ];
+  }, [activeFilePath, mode]);
 
   const resetChat = () => {
     setMessages([buildWelcome(projectName)]);

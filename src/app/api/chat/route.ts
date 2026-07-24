@@ -8,6 +8,10 @@ import {
 import { z } from "zod";
 
 import {
+  DEFAULT_AI_CHAT_MODE,
+  isAiChatMode,
+} from "@/lib/ai/chat-mode";
+import {
   isAllowedPolarisChatModel,
   POLARIS_CHAT_MODEL,
 } from "@/lib/ai/gemini-model";
@@ -15,7 +19,7 @@ import {
   buildWorkspaceSystemPrompt,
   type WorkspaceChatContext,
 } from "@/lib/ai/workspace-context";
-import { workspaceChatTools } from "@/lib/ai/workspace-tools";
+import { toolsForChatMode } from "@/lib/ai/workspace-tools";
 
 const workspaceContextSchema = z.object({
   projectName: z.string().optional(),
@@ -29,6 +33,7 @@ const workspaceContextSchema = z.object({
 const chatRequestSchema = z.object({
   messages: z.array(z.custom<UIMessage>()),
   model: z.string().optional(),
+  mode: z.enum(["plan", "task"]).optional(),
   /** @deprecated prefer workspace.projectName */
   projectName: z.string().optional(),
   /** @deprecated prefer workspace.activeFilePath */
@@ -42,6 +47,7 @@ export async function POST(request: Request) {
     const { messages, model } = body;
     const selectedModel =
       model && isAllowedPolarisChatModel(model) ? model : POLARIS_CHAT_MODEL;
+    const mode = isAiChatMode(body.mode) ? body.mode : DEFAULT_AI_CHAT_MODE;
 
     const workspace: WorkspaceChatContext = {
       projectName: body.workspace?.projectName ?? body.projectName,
@@ -54,10 +60,10 @@ export async function POST(request: Request) {
 
     const result = streamText({
       model: google(selectedModel),
-      system: buildWorkspaceSystemPrompt(workspace),
+      system: buildWorkspaceSystemPrompt(workspace, mode),
       messages: await convertToModelMessages(messages),
-      tools: workspaceChatTools,
-      stopWhen: stepCountIs(8),
+      tools: toolsForChatMode(mode),
+      stopWhen: stepCountIs(mode === "plan" ? 6 : 8),
     });
 
     return result.toUIMessageStreamResponse();

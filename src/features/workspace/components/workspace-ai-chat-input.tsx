@@ -47,15 +47,19 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { SpeechInput } from "@/components/ai-elements/speech-input";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { WorkspaceAiModeToggle } from "@/features/workspace/components/workspace-ai-mode-toggle";
 import { WorkspaceAiModelPicker } from "@/features/workspace/components/workspace-ai-model-picker";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import type { AiChatMode } from "@/lib/ai/chat-mode";
 
 type WorkspaceAiChatInputProps = {
   projectId: string;
   projectName?: string;
   status: ChatStatus;
   disabled?: boolean;
+  mode: AiChatMode;
+  onModeChange: (mode: AiChatMode) => void;
   modelId: string;
   onModelChange: (modelId: string) => void;
   autoModel?: boolean;
@@ -237,6 +241,8 @@ function PromptInputFields({
   projectName,
   status,
   disabled,
+  mode,
+  onModeChange,
   modelId,
   onModelChange,
   autoModel,
@@ -317,7 +323,11 @@ function PromptInputFields({
         <PromptInputTextarea
           value={controller.textInput.value}
           onChange={(event) => handleTextChange(event.target.value)}
-          placeholder={`Ask about ${projectName ?? "this project"}… (@ file, attach images)`}
+          placeholder={
+            mode === "plan"
+              ? `Plan changes for ${projectName ?? "this project"}…`
+              : `Ask about ${projectName ?? "this project"}… (@ file, attach images)`
+          }
           className="min-h-14 text-[13px] text-ws-text placeholder:text-ws-text-muted"
           disabled={disabled || isBusy}
         />
@@ -325,6 +335,12 @@ function PromptInputFields({
 
       <PromptInputFooter className="px-2 pb-2">
         <PromptInputTools>
+          <WorkspaceAiModeToggle
+            value={mode}
+            onChange={onModeChange}
+            disabled={disabled || isBusy}
+          />
+
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger
               className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
