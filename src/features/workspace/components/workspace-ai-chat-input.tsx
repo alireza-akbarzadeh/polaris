@@ -398,7 +398,7 @@ function PromptInputFields({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            className="size-7 bg-transparent text-ws-text-muted shadow-none hover:bg-ws-hover hover:text-ws-text"
             onTranscriptionChange={(text) => {
               const current = controller.textInput.value;
               const spacer = current && !current.endsWith(" ") ? " " : "";

@@ -14,14 +14,13 @@ import {
 
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export type PromptOptions = {
@@ -47,15 +46,20 @@ export function PromptDialogProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState("");
   const pendingRef = useRef<PendingPrompt | null>(null);
   const settledRef = useRef(false);
+  const valueRef = useRef("");
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
+
+  valueRef.current = value;
 
   const prompt = useCallback<PromptFn>((options) => {
     return new Promise<string | null>((resolve) => {
       settledRef.current = false;
       const next = { ...options, resolve };
       pendingRef.current = next;
-      setValue(options.defaultValue ?? "");
+      const initial = options.defaultValue ?? "";
+      valueRef.current = initial;
+      setValue(initial);
       setPending(next);
     });
   }, []);
@@ -70,6 +74,15 @@ export function PromptDialogProvider({ children }: { children: ReactNode }) {
     setPending(null);
     current?.resolve(result);
   }, []);
+
+  const confirm = useCallback(() => {
+    const next = (inputRef.current?.value ?? valueRef.current).trimEnd();
+    close(next);
+  }, [close]);
+
+  const cancel = useCallback(() => {
+    close(null);
+  }, [close]);
 
   useEffect(() => {
     if (!pending) return;
@@ -88,7 +101,7 @@ export function PromptDialogProvider({ children }: { children: ReactNode }) {
       <AlertDialog
         open={pending !== null}
         onOpenChange={(open) => {
-          if (!open) close(null);
+          if (!open) cancel();
         }}
       >
         <AlertDialogContent className="border-ws-border bg-ws-panel text-ws-text sm:max-w-md">
@@ -105,48 +118,48 @@ export function PromptDialogProvider({ children }: { children: ReactNode }) {
             )}
           </AlertDialogHeader>
 
-          <div className="grid gap-2">
-            <label htmlFor={inputId} className="sr-only">
-              {pending?.inputLabel ?? "Value"}
-            </label>
-            <Input
-              ref={inputRef}
-              id={inputId}
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  close(value);
-                }
-              }}
-              placeholder={pending?.placeholder}
-              autoComplete="off"
-              spellCheck={false}
-              className="border-ws-border bg-ws-hover text-ws-text placeholder:text-ws-text-muted"
-            />
-          </div>
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              confirm();
+            }}
+          >
+            <div className="grid gap-2">
+              <label htmlFor={inputId} className="sr-only">
+                {pending?.inputLabel ?? "Value"}
+              </label>
+              <Input
+                ref={inputRef}
+                id={inputId}
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder={pending?.placeholder}
+                autoComplete="off"
+                spellCheck={false}
+                className="border-ws-border bg-ws-hover text-ws-text placeholder:text-ws-text-muted"
+              />
+            </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="border-ws-border bg-ws-hover text-ws-text hover:bg-ws-border"
-              onClick={(event) => {
-                event.preventDefault();
-                close(null);
-              }}
-            >
-              {pending?.cancelLabel ?? "Cancel"}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-ws-accent text-white hover:bg-ws-accent-hover"
-              onClick={(event) => {
-                event.preventDefault();
-                close(value);
-              }}
-            >
-              {pending?.confirmLabel ?? "Continue"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+            <AlertDialogFooter>
+              {/* Use plain Buttons — AlertDialogAction/Cancel auto-dismiss can
+                  race onOpenChange(false) and resolve the prompt as cancelled. */}
+              <Button
+                type="button"
+                variant="outline"
+                className="border-ws-border bg-ws-hover text-ws-text hover:bg-ws-border"
+                onClick={cancel}
+              >
+                {pending?.cancelLabel ?? "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                className="bg-ws-accent text-white hover:bg-ws-accent-hover"
+              >
+                {pending?.confirmLabel ?? "Continue"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
         </AlertDialogContent>
       </AlertDialog>
     </PromptContext.Provider>

@@ -6,7 +6,6 @@ import {
   AI_CHAT_MODE_META,
   type AiChatMode,
 } from "@/lib/ai/chat-mode";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
@@ -21,6 +20,15 @@ type WorkspaceAiModeToggleProps = {
   className?: string;
 };
 
+const MODES: Array<{
+  id: AiChatMode;
+  label: string;
+  icon: typeof ListTodoIcon;
+}> = [
+  { id: "plan", label: "Plan", icon: ListTodoIcon },
+  { id: "task", label: "Task", icon: WrenchIcon },
+];
+
 export function WorkspaceAiModeToggle({
   value,
   onChange,
@@ -28,61 +36,48 @@ export function WorkspaceAiModeToggle({
   className,
 }: WorkspaceAiModeToggleProps) {
   return (
-    <ToggleGroup
-      type="single"
-      value={value}
-      onValueChange={(next) => {
-        if (next === "plan" || next === "task") onChange(next);
-      }}
-      variant="outline"
-      size="sm"
-      spacing={0}
-      disabled={disabled}
+    <div
+      role="group"
       aria-label="AI mode"
       className={cn(
-        "h-7 rounded-md border-ws-border bg-ws-bg p-0.5",
+        "inline-flex h-7 items-center gap-0.5 rounded-md border border-ws-border bg-ws-bg p-0.5",
         className,
       )}
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <ToggleGroupItem
-            value="plan"
-            aria-label={AI_CHAT_MODE_META.plan.label}
-            className={cn(
-              "h-6 gap-1 rounded-sm px-2 text-[11px] text-ws-text-muted",
-              "data-[state=on]:bg-ws-hover data-[state=on]:text-ws-text data-[state=on]:shadow-none",
-              "hover:bg-ws-hover/60 hover:text-ws-text",
-            )}
-          >
-            <ListTodoIcon className="size-3" />
-            <span>Plan</span>
-          </ToggleGroupItem>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
-          {AI_CHAT_MODE_META.plan.description}
-        </TooltipContent>
-      </Tooltip>
+      {MODES.map((mode) => {
+        const active = value === mode.id;
+        const Icon = mode.icon;
+        const meta = AI_CHAT_MODE_META[mode.id];
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <ToggleGroupItem
-            value="task"
-            aria-label={AI_CHAT_MODE_META.task.label}
-            className={cn(
-              "h-6 gap-1 rounded-sm px-2 text-[11px] text-ws-text-muted",
-              "data-[state=on]:bg-ws-accent/20 data-[state=on]:text-ws-accent-soft data-[state=on]:shadow-none",
-              "hover:bg-ws-hover/60 hover:text-ws-text",
-            )}
-          >
-            <WrenchIcon className="size-3" />
-            <span>Task</span>
-          </ToggleGroupItem>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
-          {AI_CHAT_MODE_META.task.description}
-        </TooltipContent>
-      </Tooltip>
-    </ToggleGroup>
+        return (
+          <Tooltip key={mode.id}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={disabled}
+                aria-label={meta.label}
+                aria-pressed={active}
+                onClick={() => onChange(mode.id)}
+                className={cn(
+                  "inline-flex h-6 items-center gap-1 rounded-sm px-2 text-[11px] font-medium transition-colors",
+                  "disabled:pointer-events-none disabled:opacity-50",
+                  active
+                    ? mode.id === "plan"
+                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                      : "bg-ws-accent/20 text-ws-accent-soft"
+                    : "text-ws-text-muted hover:bg-ws-hover/70 hover:text-ws-text",
+                )}
+              >
+                <Icon className="size-3 shrink-0" />
+                <span>{mode.label}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {meta.description}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
   );
 }

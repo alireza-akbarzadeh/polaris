@@ -1,6 +1,6 @@
 "use client";
 
-import type { ToolUIPart } from "ai";
+import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import {
   CheckCircle2Icon,
   CircleDashedIcon,
@@ -23,6 +23,7 @@ import {
   ToolHeader,
   ToolInput,
   ToolOutput,
+  type ToolPart,
 } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,7 @@ function toolPath(input: unknown): string | null {
   return input.path;
 }
 
-function statusMeta(state: ToolUIPart["state"]) {
+function statusMeta(state: ToolPart["state"]) {
   switch (state) {
     case "output-available":
       return {
@@ -65,9 +66,9 @@ function statusMeta(state: ToolUIPart["state"]) {
 
 type WorkspaceAiTaskCardProps = {
   name: string;
-  part: ToolUIPart;
+  part: ToolUIPart | DynamicToolUIPart;
   defaultOpen?: boolean;
-  onRetry?: () => void | Promise<void>;
+  onRetryAction?: () => void | Promise<void>;
   className?: string;
 };
 
@@ -75,7 +76,7 @@ export function WorkspaceAiTaskCard({
   name,
   part,
   defaultOpen,
-  onRetry,
+  onRetryAction,
   className,
 }: WorkspaceAiTaskCardProps) {
   const [retrying, setRetrying] = useState(false);
@@ -86,10 +87,10 @@ export function WorkspaceAiTaskCard({
   const openByDefault = defaultOpen ?? part.state !== "output-available";
 
   const handleRetry = async () => {
-    if (!onRetry || retrying) return;
+    if (!onRetryAction || retrying) return;
     setRetrying(true);
     try {
-      await onRetry();
+      await onRetryAction();
     } finally {
       setRetrying(false);
     }
@@ -128,7 +129,7 @@ export function WorkspaceAiTaskCard({
           </div>
         </TaskTrigger>
 
-        {failed && onRetry ? (
+        {failed && onRetryAction ? (
           <Button
             type="button"
             variant="ghost"
@@ -154,10 +155,18 @@ export function WorkspaceAiTaskCard({
             className="mb-0 border-ws-border/70 bg-transparent shadow-none"
           >
             <ToolHeader
-              type={part.type as `tool-${string}`}
-              state={part.state}
               title="Details"
               className="px-2 py-2"
+              {...(part.type === "dynamic-tool"
+                ? {
+                    type: "dynamic-tool" as const,
+                    state: part.state,
+                    toolName: part.toolName,
+                  }
+                : {
+                    type: part.type,
+                    state: part.state,
+                  })}
             />
             <ToolContent className="space-y-2 p-2 text-[11px]">
               {"input" in part && part.input != null ? (

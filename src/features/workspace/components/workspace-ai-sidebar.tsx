@@ -17,6 +17,7 @@ import {
   getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
+  type DynamicToolUIPart,
   type ToolUIPart,
   type UIMessage,
 } from "ai";
@@ -335,7 +336,7 @@ function WorkspaceAiChatSession({
   addToolOutputRef.current = addToolOutput as typeof addToolOutputRef.current;
 
   const retryToolPart = useCallback(
-    async (part: ToolUIPart) => {
+    async (part: ToolUIPart | DynamicToolUIPart) => {
       if (!("toolCallId" in part) || !("input" in part)) return;
       await executeWorkspaceTool({
         toolName: getToolName(part),
@@ -492,6 +493,22 @@ function WorkspaceAiChatSession({
       <div className="flex flex-wrap gap-1.5 border-b border-ws-border-subtle px-3 py-2">
         <Badge
           variant="outline"
+          className={cn(
+            "h-5 gap-1 rounded-sm border-ws-border px-1.5 text-[10px] font-normal",
+            mode === "plan"
+              ? "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              : "bg-ws-accent/15 text-ws-accent-soft",
+          )}
+        >
+          {mode === "plan" ? (
+            <ListTodoIcon className="size-2.5" />
+          ) : (
+            <WrenchIcon className="size-2.5" />
+          )}
+          {mode === "plan" ? "Plan mode" : "Task mode"}
+        </Badge>
+        <Badge
+          variant="outline"
           className="h-5 rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-secondary"
         >
           {projectName ?? "Workspace"}
@@ -519,8 +536,12 @@ function WorkspaceAiChatSession({
         <ConversationContent className="gap-4 p-3">
           {showWelcome ? (
             <ConversationEmptyState
-              title="Ask Polaris"
-              description="Create files, edit code, or plan changes in this project"
+              title={mode === "plan" ? "Plan with Polaris" : "Ask Polaris"}
+              description={
+                mode === "plan"
+                  ? "Outline steps and risks without editing files"
+                  : "Create files, edit code, or run tasks in this project"
+              }
               icon={
                 <Image
                   src="/logo.svg"
@@ -534,10 +555,19 @@ function WorkspaceAiChatSession({
             />
           ) : (
             <>
-              {messages.map((message) => {
+              {messages.map((message, messageIndex) => {
                 if (message.id === "welcome" && visibleMessages.length > 0) {
                   return null;
                 }
+
+                const isLastAssistant =
+                  message.role === "assistant" &&
+                  messageIndex === messages.length - 1 &&
+                  status === "ready";
+                const isStreamingAssistant =
+                  message.role === "assistant" &&
+                  messageIndex === messages.length - 1 &&
+                  (status === "streaming" || status === "submitted");
 
                 return (
                   <Message
@@ -557,19 +587,44 @@ function WorkspaceAiChatSession({
                         <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ws-text-muted">
                           Polaris
                         </span>
+                        {isLastAssistant ? (
+                          <MessageActions className="ml-auto">
+                            <MessageAction
+                              tooltip="Retry response"
+                              label="Retry"
+                              className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+                              onClick={retryLastResponse}
+                            >
+                              <RotateCcwIcon className="size-3" />
+                            </MessageAction>
+                          </MessageActions>
+                        ) : null}
                       </div>
                     ) : null}
                     <MessageContent
                       className={
                         message.role === "user"
                           ? "rounded-xl border border-ws-accent/30 bg-ws-accent/15 px-3 py-2 text-[13px] text-ws-text group-[.is-user]:bg-ws-accent/15"
-                          : "rounded-xl border border-ws-border/60 bg-ws-bg/80 px-3 py-2 text-[13px] leading-relaxed text-ws-text-secondary"
+                          : mode === "plan"
+                            ? "bg-transparent p-0 text-[13px] leading-relaxed text-ws-text-secondary"
+                            : "rounded-xl border border-ws-border/60 bg-ws-bg/80 px-3 py-2 text-[13px] leading-relaxed text-ws-text-secondary"
                       }
                     >
                       {message.parts.map((part, index) => {
                         if (part.type === "text") {
+                          if (message.role === "assistant" && mode === "plan") {
+                            return (
+                              <WorkspaceAiPlanCard
+                                key={`${message.id}-${index}`}
+                                content={part.text}
+                                isStreaming={isStreamingAssistant}
+                              />
+                            );
+                          }
                           return message.role === "assistant" ? (
-                            <WorkspaceMessageResponse key={`${message.id}-${index}`}>
+                            <WorkspaceMessageResponse
+                              key={`${message.id}-${index}`}
+                            >
                               {part.text}
                             </WorkspaceMessageResponse>
                           ) : (
@@ -591,32 +646,16 @@ function WorkspaceAiChatSession({
                         if (isToolUIPart(part)) {
                           const name = getToolName(part);
                           return (
-                            <Tool
+                            <WorkspaceAiTaskCard
                               key={`${message.id}-${index}`}
-                              defaultOpen={part.state !== "output-available"}
-                              className="mb-2 border-ws-border bg-ws-panel"
-                            >
-                              <ToolHeader
-                                type={part.type as `tool-${string}`}
-                                state={part.state}
-                                title={name}
-                              />
-                              <ToolContent className="space-y-2 p-3 text-[11px]">
-                                {"input" in part && part.input != null ? (
-                                  <ToolInput input={part.input} />
-                                ) : null}
-                                <ToolOutput
-                                  output={
-                                    "output" in part ? part.output : undefined
-                                  }
-                                  errorText={
-                                    "errorText" in part
-                                      ? part.errorText
-                                      : undefined
-                                  }
-                                />
-                              </ToolContent>
-                            </Tool>
+                              name={name}
+                              part={part}
+                              onRetryAction={
+                                part.state === "output-error"
+                                  ? () => retryToolPart(part)
+                                  : undefined
+                              }
+                            />
                           );
                         }
 
@@ -627,7 +666,7 @@ function WorkspaceAiChatSession({
                 );
               })}
 
-              {status === "submitted" || status === "streaming" ? (
+              {status === "submitted" ? (
                 <Message from="assistant" className="max-w-full">
                   <div className="mb-1 flex items-center gap-1.5">
                     <Image
@@ -638,16 +677,28 @@ function WorkspaceAiChatSession({
                       className="size-3.5"
                     />
                     <TextShimmer className="text-[11px] text-ws-text-muted">
-                      Thinking…
+                      {mode === "plan" ? "Drafting plan…" : "Working on task…"}
                     </TextShimmer>
                   </div>
                 </Message>
               ) : null}
 
               {error ? (
-                <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">
-                  {error.message}
-                </p>
+                <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+                  <p className="min-w-0 flex-1 text-[12px] text-red-300">
+                    {error.message}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 shrink-0 gap-1 px-2 text-[11px] text-red-200 hover:bg-red-500/20 hover:text-red-100"
+                    onClick={retryLastResponse}
+                  >
+                    <RotateCcwIcon className="size-3" />
+                    Retry
+                  </Button>
+                </div>
               ) : null}
             </>
           )}
@@ -671,6 +722,8 @@ function WorkspaceAiChatSession({
           projectId={projectId}
           projectName={projectName}
           status={status}
+          mode={mode}
+          onModeChange={handleModeChange}
           modelId={modelId}
           onModelChange={setModelId}
           autoModel={autoModel}

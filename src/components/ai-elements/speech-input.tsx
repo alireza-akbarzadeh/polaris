@@ -307,8 +307,10 @@ export const SpeechInput = ({
           "relative z-10 rounded-full transition-all duration-300",
           isListening
             ? "bg-destructive text-white hover:bg-destructive/80 hover:text-white"
-            : "bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground",
-          className
+            : props.variant === "ghost" || props.variant === "link"
+              ? "bg-transparent"
+              : "bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground",
+          className,
         )}
         disabled={isDisabled}
         onClick={toggleListening}
