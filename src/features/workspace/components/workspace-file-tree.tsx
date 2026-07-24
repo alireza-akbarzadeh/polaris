@@ -890,7 +890,7 @@ function TreeToolbar({
       </div>
       {showSearch ? (
         <div className="relative px-1.5 pb-1.5">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-3 -translate-y-1/2 text-ws-text-muted" />
+          <SearchIcon className="pointer-events-none mt-[-2.5px] absolute top-1/2 left-3.5 size-3 -translate-y-1/2 text-ws-text-muted" />
           <Input
             ref={searchInputRef}
             value={filter}
@@ -910,7 +910,7 @@ function TreeToolbar({
             type="button"
             aria-label="Close search"
             onClick={closeSearch}
-            className="absolute top-1/2 right-3.5 -translate-y-1/2 rounded-sm p-0.5 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            className="absolute top-1/2 right-3.5 mt-[-2.5px] -translate-y-1/2 rounded-sm p-0.5 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           >
             <XIcon className="size-3" />
           </button>
