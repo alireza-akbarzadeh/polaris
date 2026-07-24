@@ -267,6 +267,54 @@ function EditorSplitPane({
   );
 }
 
+function EditorPrimarySurface({
+  projectId,
+  children,
+}: {
+  projectId: string;
+  children: ReactNode;
+}) {
+  const { tabs, activeTabId } = useEditorTabs(projectId);
+  const fileTabs = tabs.filter(
+    (tab): tab is EditorTab & { kind: "file"; path: string } =>
+      tab.kind === "file" && Boolean(tab.path),
+  );
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const activeFileKeptAlive =
+    activeTab?.kind === "file" &&
+    fileTabs.some((tab) => tab.id === activeTab.id);
+
+  return (
+    <div className="relative h-full min-h-0">
+      {/* Keep open file editors mounted so tab switches do not tear down
+          Liveblocks / wipe unsaved buffers. */}
+      {fileTabs.map((tab) => {
+        const active = tab.id === activeTabId;
+        return (
+          <div
+            key={tab.id}
+            className={cn(
+              "absolute inset-0",
+              !active && "pointer-events-none invisible",
+            )}
+            aria-hidden={!active}
+          >
+            <FileEditorView
+              projectId={projectId}
+              filePath={tab.path}
+              syncWorkspaceChrome={active}
+            />
+          </div>
+        );
+      })}
+
+      {!activeFileKeptAlive ? (
+        <div className="absolute inset-0">{children}</div>
+      ) : null}
+    </div>
+  );
+}
+
 type WorkspaceEditorPanelProps = {
   projectId: string;
   children: ReactNode;
@@ -294,7 +342,11 @@ export function WorkspaceEditorPanel({
           }}
         >
           <ResizablePanel id="editor-primary" minSize="20%" defaultSize="50">
-            <div className="h-full min-h-0 overflow-auto">{children}</div>
+            <div className="h-full min-h-0 overflow-auto">
+              <EditorPrimarySurface projectId={projectId}>
+                {children}
+              </EditorPrimarySurface>
+            </div>
           </ResizablePanel>
           <ResizableHandle className="w-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
           <ResizablePanel id="editor-split" minSize="20%" defaultSize="50">
@@ -306,7 +358,11 @@ export function WorkspaceEditorPanel({
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto">
+          <EditorPrimarySurface projectId={projectId}>
+            {children}
+          </EditorPrimarySurface>
+        </div>
       )}
     </main>
   );

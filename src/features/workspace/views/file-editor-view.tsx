@@ -36,6 +36,10 @@ import {
   isPreviewableFile,
   isProjectPreviewable,
 } from "@/features/workspace/lib/preview-utils";
+import {
+  loadFileContentDraft,
+  resolveSeedContent,
+} from "@/features/workspace/lib/file-content-drafts";
 import { filePathToBreadcrumb } from "@/features/workspace/lib/sample-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
@@ -283,7 +287,13 @@ function FileEditorContent({
   readOnly,
 }: FileEditorContentProps) {
   const [activeTab, setActiveTab] = useState<EditorPanelTab>("code");
-  const [content, setContent] = useState(initialContent);
+  const draft = loadFileContentDraft(projectId, filePath);
+  const seedContent = resolveSeedContent(
+    initialContent,
+    serverUpdatedAt,
+    draft,
+  );
+  const [content, setContent] = useState(seedContent);
   const projectFiles = useProjectFiles(projectId);
   const projectPaths = (projectFiles ?? [])
     .filter((file) => file.kind === "file")
@@ -302,23 +312,34 @@ function FileEditorContent({
         readOnly={readOnly}
       />
 
-      <div className="min-h-0 flex-1">
-        {activeTab === "code" ? (
+      <div className="relative min-h-0 flex-1">
+        {/* Keep the Liveblocks editor mounted so Code ↔ Preview does not
+            reconnect an empty Y.Doc and wipe in-flight edits. */}
+        <div
+          className={cn(
+            "absolute inset-0",
+            activeTab !== "code" && "invisible pointer-events-none",
+          )}
+          aria-hidden={activeTab !== "code"}
+        >
           <CollaborativeCodeEditor
             projectId={projectId}
             filePath={filePath}
-            initialContent={initialContent}
+            initialContent={seedContent}
             serverUpdatedAt={serverUpdatedAt}
             readOnly={readOnly}
             onContentChange={setContent}
           />
-        ) : (
-          <WorkspacePreviewPanel
-            code={content}
-            filePath={filePath}
-            projectId={projectId}
-          />
-        )}
+        </div>
+        {activeTab === "preview" ? (
+          <div className="absolute inset-0">
+            <WorkspacePreviewPanel
+              code={content}
+              filePath={filePath}
+              projectId={projectId}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

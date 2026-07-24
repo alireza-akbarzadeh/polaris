@@ -29,7 +29,6 @@ import {
 import {
   Message,
   MessageContent,
-  MessageResponse,
 } from "@/components/ai-elements/message";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
@@ -44,8 +43,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { WorkspaceAiChatInput } from "@/features/workspace/components/workspace-ai-chat-input";
 import { WorkspaceAiHistoryPanel } from "@/features/workspace/components/workspace-ai-history-panel";
+import { WorkspaceMessageResponse } from "@/features/workspace/components/workspace-message-response";
+import { AiCodeActionsProvider } from "@/features/workspace/context/ai-code-actions-context";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
@@ -117,6 +119,8 @@ function WorkspaceAiChatSession({
   const projectFiles = useProjectFiles(projectId);
   const activeFileDoc = useProjectFile(projectId, activeFilePath ?? "");
   const changedFiles = useChangedFiles(projectId);
+  const access = useProjectAccess(projectId);
+  const canEdit = access?.canEdit ?? false;
 
   const workspaceContext = useMemo((): WorkspaceChatContext => {
     const fileTree =
@@ -354,7 +358,31 @@ function WorkspaceAiChatSession({
   );
   const showWelcome = visibleMessages.length === 0;
 
+  const applyCodeToFile = useCallback(
+    async (path: string, content: string) => {
+      const result = await writeFileAtPath({
+        projectId: projectId as Id<"projects">,
+        path,
+        content,
+      });
+      openTab({ kind: "file", path: result.path });
+      return result;
+    },
+    [openTab, projectId, writeFileAtPath],
+  );
+
+  const codeActions = useMemo(
+    () => ({
+      projectId,
+      canEdit,
+      activeFilePath: activeFilePath ?? null,
+      applyCodeToFile,
+    }),
+    [activeFilePath, applyCodeToFile, canEdit, projectId],
+  );
+
   return (
+    <AiCodeActionsProvider value={codeActions}>
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
         <Button
@@ -474,9 +502,9 @@ function WorkspaceAiChatSession({
                       {message.parts.map((part, index) => {
                         if (part.type === "text") {
                           return message.role === "assistant" ? (
-                            <MessageResponse key={`${message.id}-${index}`}>
+                            <WorkspaceMessageResponse key={`${message.id}-${index}`}>
                               {part.text}
-                            </MessageResponse>
+                            </WorkspaceMessageResponse>
                           ) : (
                             <p key={`${message.id}-${index}`}>{part.text}</p>
                           );
@@ -585,6 +613,7 @@ function WorkspaceAiChatSession({
         />
       </div>
     </div>
+    </AiCodeActionsProvider>
   );
 }
 

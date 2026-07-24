@@ -271,7 +271,8 @@
 /* Streamdown code blocks: light readable island inside dark workspace */
 [data-streamdown="code-block-actions"],
 [data-streamdown="code-block-copy-button"],
-[data-streamdown="code-block-download-button"] {
+[data-streamdown="code-block-download-button"],
+[data-streamdown="code-block-apply-button"] {
   pointer-events: auto;
 }
 
@@ -292,12 +293,14 @@
 }
 
 [data-streamdown="code-block-copy-button"],
-[data-streamdown="code-block-download-button"] {
+[data-streamdown="code-block-download-button"],
+[data-streamdown="code-block-apply-button"] {
   color: #656d76 !important;
 }
 
 [data-streamdown="code-block-copy-button"]:hover,
-[data-streamdown="code-block-download-button"]:hover {
+[data-streamdown="code-block-download-button"]:hover,
+[data-streamdown="code-block-apply-button"]:hover {
   color: #24292f !important;
 }
 

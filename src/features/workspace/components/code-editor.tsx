@@ -12,6 +12,7 @@ import {
   languageExtensionForPath,
   supportsAiSuggestion,
 } from "@/features/workspace/lib/editor-languages";
+import { formatDocumentExtension } from "@/features/workspace/lib/format-extension";
 import { createEditorSetup } from "@/lib/custom-setup";
 import { suggestion } from "@/lib/suggestion-extension";
 
@@ -81,7 +82,11 @@ export function CodeEditor({
       highlightActiveLine,
       bracketMatching,
     });
-    const base = [...setup, ...languageExtensionForPath(filePath)];
+    const base = [
+      ...setup,
+      ...languageExtensionForPath(filePath),
+      ...(readOnly ? [] : [formatDocumentExtension(filePath, tabSize)]),
+    ];
     const withCollab = collabExtensions?.length
       ? [...base, ...collabExtensions]
       : base;

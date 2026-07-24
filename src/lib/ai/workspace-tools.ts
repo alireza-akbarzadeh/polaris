@@ -5,12 +5,12 @@ import { z } from "zod";
 export const workspaceChatTools = {
   writeFile: tool({
     description:
-      "Create or overwrite a file in the Polaris project workspace. Creates parent folders automatically. Use this instead of only showing code in chat when the user asks to add or change files.",
+      "Create or overwrite a file in the Polaris project workspace. Creates parent folders automatically. Always pass a concrete relative path (ask the user for the file name if unknown). Prefer this over only pasting code in chat when the user wants project changes.",
     inputSchema: z.object({
       path: z
         .string()
         .describe(
-          "Path relative to project root, e.g. src/components/Card.tsx",
+          "Required path relative to project root, e.g. src/components/Card.tsx",
         ),
       content: z.string().describe("Full file contents to write"),
     }),

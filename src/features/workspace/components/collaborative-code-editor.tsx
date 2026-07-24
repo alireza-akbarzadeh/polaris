@@ -17,6 +17,7 @@ import {
   loadFileContentDraft,
   resolveSeedContent,
   saveFileContentDraft,
+  shouldReseedLiveblocks,
 } from "@/features/workspace/lib/file-content-drafts";
 import {
   collabCursorTheme,
@@ -55,6 +56,8 @@ function LiveblocksCollaborativeEditor({
   const serverUpdatedAtRef = useRef(serverUpdatedAt);
   const onContentChangeRef = useRef(onContentChange);
   const readOnlyRef = useRef(readOnly);
+  /** Ignore empty Y.Doc observer pulses until after we finish seeding. */
+  const acceptRemoteEditsRef = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [value, setValue] = useState(initialContent);
@@ -67,9 +70,20 @@ function LiveblocksCollaborativeEditor({
   onContentChangeRef.current = onContentChange;
   readOnlyRef.current = readOnly;
 
+  const ytextRef = useRef<Y.Text | null>(null);
+
   const persistToServerRef = useRef<(content: string) => void>(() => {});
   persistToServerRef.current = (content: string) => {
     pendingContentRef.current = null;
+
+    // Never let a fresh empty Liveblocks room wipe a known non-empty file.
+    const known =
+      loadFileContentDraft(projectId, filePath)?.content ||
+      initialContentRef.current;
+    if (!content && known) {
+      return;
+    }
+
     void updateContent({
       projectId: projectId as Id<"projects">,
       path: filePath,
@@ -78,7 +92,9 @@ function LiveblocksCollaborativeEditor({
       .then(() => {
         const draft = loadFileContentDraft(projectId, filePath);
         if (draft && draft.content === content) {
-          clearFileContentDraft(projectId, filePath);
+          // Keep session memory so an empty Liveblocks reconnect can reseed
+          // before the Convex query reflects this write.
+          clearFileContentDraft(projectId, filePath, { keepMemory: true });
         }
       })
       .catch(() => {
@@ -100,13 +116,33 @@ function LiveblocksCollaborativeEditor({
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    const pending = pendingContentRef.current;
-    if (pending === null || readOnlyRef.current) return;
-    persistToServerRef.current(pending);
+    if (readOnlyRef.current) return;
+
+    const fromView = viewRef.current?.state.doc.toString();
+    const fromYjs = ytextRef.current?.toString();
+    const content =
+      fromView ?? fromYjs ?? pendingContentRef.current ?? null;
+    if (content === null) return;
+
+    const known =
+      loadFileContentDraft(projectId, filePath)?.content ||
+      initialContentRef.current;
+    // Don't clobber a known buffer with an empty editor during teardown.
+    if (!content && known) {
+      pendingContentRef.current = known;
+      persistToServerRef.current(known);
+      return;
+    }
+
+    // Sync draft immediately so a remount can reseed even if Convex is slow.
+    saveFileContentDraft(projectId, filePath, content);
+    pendingContentRef.current = content;
+    persistToServerRef.current(content);
   };
 
   useEffect(() => {
     seededRef.current = false;
+    acceptRemoteEditsRef.current = false;
     setReady(false);
     setCollabExtensions(null);
 
@@ -115,6 +151,7 @@ function LiveblocksCollaborativeEditor({
     const provider = getYjsProviderForRoom(room);
     const ydoc = provider.getYDoc();
     const ytext = ydoc.getText("codemirror");
+    ytextRef.current = ytext;
     const undoManager = new Y.UndoManager(ytext);
 
     const self = room.getSelf();
@@ -128,25 +165,40 @@ function LiveblocksCollaborativeEditor({
 
     let onSync: ((isSynced: boolean) => void) | null = null;
 
-    const finishSetup = () => {
-      if (!seededRef.current && ytext.length === 0) {
-        const draft = loadFileContentDraft(projectId, filePath);
-        const seed = resolveSeedContent(
-          initialContentRef.current,
-          serverUpdatedAtRef.current,
-          draft,
-        );
-        if (seed) {
-          ydoc.transact(() => {
-            ytext.insert(0, seed);
-          });
-          if (seed !== initialContentRef.current && !readOnlyRef.current) {
-            scheduleServerSave(seed);
+    const resolveSeed = () => {
+      const draft = loadFileContentDraft(projectId, filePath);
+      return resolveSeedContent(
+        initialContentRef.current,
+        serverUpdatedAtRef.current,
+        draft,
+      );
+    };
+
+    const seedIfNeeded = () => {
+      if (seededRef.current) return;
+      const seed = resolveSeed();
+      const current = ytext.toString();
+      if (shouldReseedLiveblocks(current, seed)) {
+        ydoc.transact(() => {
+          if (ytext.length > 0) {
+            ytext.delete(0, ytext.length);
           }
+          ytext.insert(0, seed);
+        });
+        saveFileContentDraft(projectId, filePath, seed);
+        if (seed !== initialContentRef.current && !readOnlyRef.current) {
+          scheduleServerSave(seed);
         }
-        seededRef.current = true;
       }
-      setValue(ytext.toString());
+      seededRef.current = true;
+    };
+
+    const finishSetup = () => {
+      seedIfNeeded();
+      const text = ytext.toString();
+      setValue(text);
+      onContentChangeRef.current?.(text);
+      acceptRemoteEditsRef.current = true;
       setCollabExtensions([
         collabCursorTheme,
         ...(yCollab(ytext, provider.awareness, {
@@ -155,6 +207,39 @@ function LiveblocksCollaborativeEditor({
       ]);
       setReady(true);
     };
+
+    const onText = () => {
+      const text = ytext.toString();
+
+      // While Liveblocks is still connecting/syncing, an empty Y.Doc pulse
+      // must not overwrite drafts or schedule a wipe of Convex content.
+      if (!acceptRemoteEditsRef.current) {
+        const seed = resolveSeed();
+        if (!text && seed) return;
+      }
+
+      setValue(text);
+      onContentChangeRef.current?.(text);
+
+      if (readOnlyRef.current) return;
+
+      const known =
+        loadFileContentDraft(projectId, filePath)?.content ||
+        initialContentRef.current;
+      if (!text && known) {
+        // Fresh empty room after reconnect — reseed instead of persisting "".
+        if (!seededRef.current || shouldReseedLiveblocks(text, known)) {
+          seededRef.current = false;
+          seedIfNeeded();
+        }
+        return;
+      }
+
+      saveFileContentDraft(projectId, filePath, text);
+      scheduleServerSave(text);
+    };
+
+    ytext.observe(onText);
 
     if (provider.synced) {
       finishSetup();
@@ -167,18 +252,6 @@ function LiveblocksCollaborativeEditor({
       provider.on("sync", onSync);
     }
 
-    const onText = () => {
-      const text = ytext.toString();
-      setValue(text);
-      onContentChangeRef.current?.(text);
-
-      if (readOnlyRef.current) return;
-      saveFileContentDraft(projectId, filePath, text);
-      scheduleServerSave(text);
-    };
-
-    ytext.observe(onText);
-
     const onPageHide = () => flushPendingSave();
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flushPendingSave();
@@ -187,12 +260,14 @@ function LiveblocksCollaborativeEditor({
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
+      acceptRemoteEditsRef.current = false;
       if (onSync) provider.off("sync", onSync);
       ytext.unobserve(onText);
       undoManager.destroy();
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
       flushPendingSave();
+      ytextRef.current = null;
       setCollabExtensions(null);
       setReady(false);
     };

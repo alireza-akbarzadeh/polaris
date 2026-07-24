@@ -54,6 +54,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "unfold", label: "Unfold code", keys: "⌘ ⌥ ]" },
       { id: "comment", label: "Toggle comment", keys: "⌘ /" },
       {
+        id: "format",
+        label: "Format document",
+        keys: "⇧ ⌥ F",
+        description: "Prettier (also ⌘ ⇧ I)",
+      },
+      {
         id: "ai-accept",
         label: "Accept AI suggestion",
         keys: "Tab",

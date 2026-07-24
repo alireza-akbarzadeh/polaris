@@ -147,27 +147,34 @@ function MentionPicker({
   open,
   onClose,
   fileContentsRef,
+  query = "",
 }: {
   projectId: string;
   open: boolean;
   onClose: () => void;
   fileContentsRef: React.MutableRefObject<Map<string, string>>;
+  query?: string;
 }) {
   const files = useProjectFiles(projectId);
   const controller = usePromptInputController();
   const referenced = usePromptInputReferencedSources();
 
-  const fileOptions = useMemo(
-    () =>
-      (files ?? [])
-        .filter((file) => file.kind === "file")
-        .map((file) => ({
-          path: file.path,
-          name: file.name,
-          content: file.content ?? "",
-        })),
-    [files],
-  );
+  const fileOptions = useMemo(() => {
+    const all = (files ?? [])
+      .filter((file) => file.kind === "file")
+      .map((file) => ({
+        path: file.path,
+        name: file.name,
+        content: file.content ?? "",
+      }));
+    const q = query.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(
+      (file) =>
+        file.path.toLowerCase().includes(q) ||
+        file.name.toLowerCase().includes(q),
+    );
+  }, [files, query]);
 
   const insertMention = useCallback(
     (path: string, name: string, content: string) => {
@@ -193,20 +200,28 @@ function MentionPicker({
 
   if (!open) return null;
 
+  const isLoading = files === undefined;
+
   return (
-    <div className="absolute right-2 bottom-full left-2 z-20 mb-1 overflow-hidden rounded-lg border border-ws-border bg-ws-panel shadow-lg">
+    <div className="absolute right-2 bottom-full left-2 z-50 mb-1 max-h-56 overflow-hidden rounded-lg border border-ws-border bg-ws-panel shadow-lg">
       <PromptInputCommand>
-        <PromptInputCommandInput placeholder="Mention a file…" />
+        <PromptInputCommandInput
+          placeholder="Mention a file…"
+          value={query}
+          onValueChange={() => {}}
+        />
         <PromptInputCommandList>
-          <PromptInputCommandEmpty>No files found.</PromptInputCommandEmpty>
+          <PromptInputCommandEmpty>
+            {isLoading ? "Loading files…" : "No files found."}
+          </PromptInputCommandEmpty>
           <PromptInputCommandGroup heading="Project files">
             {fileOptions.map((file) => (
               <PromptInputCommandItem
                 key={file.path}
-                value={file.path}
+                value={`${file.path} ${file.name}`}
                 onSelect={() => insertMention(file.path, file.name, file.content)}
               >
-                <FileTextIcon className="size-3.5 text-ws-accent-soft" />
+                <FileTextIcon className="size-3.5 shrink-0 text-ws-accent-soft" />
                 <span className="truncate">{file.path}</span>
               </PromptInputCommandItem>
             ))}
@@ -267,7 +282,8 @@ function PromptInputFields({
   const handleTextChange = useCallback(
     (value: string) => {
       controller.textInput.setInput(value);
-      setMentionOpen(value.endsWith("@") || /@\w*$/.test(value));
+      // Keep the picker open while typing an @query (letters, digits, / . - _)
+      setMentionOpen(/@[\w./-]*$/.test(value) || value.endsWith("@"));
     },
     [controller.textInput, setMentionOpen],
   );
@@ -278,6 +294,11 @@ function PromptInputFields({
     attachments.files.length > 0 ||
     referenced.sources.length > 0;
 
+  const mentionQuery = useMemo(() => {
+    const match = controller.textInput.value.match(/@([\w./-]*)$/);
+    return match?.[1] ?? "";
+  }, [controller.textInput.value]);
+
   return (
     <>
       <MentionPicker
@@ -285,6 +306,7 @@ function PromptInputFields({
         open={mentionOpen}
         onClose={() => setMentionOpen(false)}
         fileContentsRef={fileContentsRef}
+        query={mentionQuery}
       />
 
       <PromptInputHeader>

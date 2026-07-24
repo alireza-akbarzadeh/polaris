@@ -2,6 +2,9 @@
 
 const STORAGE_PREFIX = "polaris-file-draft:";
 
+/** Session memory — survives tab remounts even if localStorage draft was cleared. */
+const memoryDrafts = new Map<string, FileContentDraft>();
+
 export type FileContentDraft = {
   content: string;
   updatedAt: number;
@@ -11,25 +14,33 @@ function storageKey(projectId: string, path: string) {
   return `${STORAGE_PREFIX}${projectId}:${path}`;
 }
 
+function memoryKey(projectId: string, path: string) {
+  return `${projectId}:${path}`;
+}
+
 export function loadFileContentDraft(
   projectId: string,
   path: string,
 ): FileContentDraft | null {
-  if (typeof window === "undefined") return null;
+  const mem = memoryDrafts.get(memoryKey(projectId, path));
+  if (typeof window === "undefined") return mem ?? null;
 
   try {
     const raw = localStorage.getItem(storageKey(projectId, path));
-    if (!raw) return null;
+    if (!raw) return mem ?? null;
     const parsed = JSON.parse(raw) as FileContentDraft;
     if (
       typeof parsed?.content !== "string" ||
       typeof parsed?.updatedAt !== "number"
     ) {
-      return null;
+      return mem ?? null;
     }
+    // Prefer whichever draft is newer.
+    if (mem && mem.updatedAt > parsed.updatedAt) return mem;
+    memoryDrafts.set(memoryKey(projectId, path), parsed);
     return parsed;
   } catch {
-    return null;
+    return mem ?? null;
   }
 }
 
@@ -38,20 +49,29 @@ export function saveFileContentDraft(
   path: string,
   content: string,
 ) {
-  if (typeof window === "undefined") return;
-
   const draft: FileContentDraft = {
     content,
     updatedAt: Date.now(),
   };
+  memoryDrafts.set(memoryKey(projectId, path), draft);
+
+  if (typeof window === "undefined") return;
+
   try {
     localStorage.setItem(storageKey(projectId, path), JSON.stringify(draft));
   } catch {
-    // Quota / private mode — Convex autosave remains the durable path.
+    // Quota / private mode — memory + Convex autosave remain the durable path.
   }
 }
 
-export function clearFileContentDraft(projectId: string, path: string) {
+export function clearFileContentDraft(
+  projectId: string,
+  path: string,
+  options?: { keepMemory?: boolean },
+) {
+  if (!options?.keepMemory) {
+    memoryDrafts.delete(memoryKey(projectId, path));
+  }
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(storageKey(projectId, path));
@@ -84,4 +104,17 @@ export function resolveSeedContent(
   }
 
   return serverContent;
+}
+
+/**
+ * True when Liveblocks came back empty/stale and we should push known content
+ * into the Y.Doc instead of treating the empty room as authoritative.
+ */
+export function shouldReseedLiveblocks(
+  ytextContent: string,
+  seed: string,
+): boolean {
+  if (!seed) return false;
+  if (!ytextContent) return true;
+  return false;
 }
