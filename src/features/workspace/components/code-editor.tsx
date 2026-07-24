@@ -13,7 +13,10 @@ import {
 import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
-import { configureMonacoJsx } from "@/features/workspace/lib/monaco-jsx";
+import {
+  configureMonacoLanguages,
+  monacoModelPath,
+} from "@/features/workspace/lib/monaco-languages";
 import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
 import {
   POLARIS_THEME_DARK,
@@ -149,9 +152,9 @@ export function CodeEditor({
 
     registerPolarisThemes(monaco);
     monaco.editor.setTheme(theme);
-    configureMonacoJsx(monaco);
+    configureMonacoLanguages(monaco);
 
-    // Ensure model language + URI extension stay aligned for JSX/TSX.
+    // Ensure model language + URI extension stay aligned for JSX/TSX/CSS.
     const model = ed.getModel();
     if (model && language) {
       monaco.editor.setModelLanguage(model, language);
@@ -176,12 +179,14 @@ export function CodeEditor({
     onCreateEditor?.(ed);
   };
 
+  const modelPath = useMemo(() => monacoModelPath(filePath), [filePath]);
+
   return (
     <div className="polaris-monaco h-full min-h-0">
       <Editor
         height="100%"
-        // URI must keep the real extension (.tsx/.jsx) so Monaco enables JSX.
-        path={filePath}
+        // file:///… keeps .tsx/.jsx/.css so Monaco enables JSX + CSS services.
+        path={modelPath}
         language={language}
         theme={theme}
         value={collaborative ? undefined : value}
@@ -196,7 +201,7 @@ export function CodeEditor({
         options={options}
         beforeMount={(monaco) => {
           registerPolarisThemes(monaco);
-          configureMonacoJsx(monaco);
+          configureMonacoLanguages(monaco);
         }}
         onMount={handleMount}
         loading={

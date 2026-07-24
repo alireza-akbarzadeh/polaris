@@ -6,7 +6,10 @@ export function monacoLanguageForPath(filePath: string): string {
   if (/\.ts$/.test(lower)) return "typescript";
   if (/\.jsx$/.test(lower)) return "javascript";
   if (/\.(mjs|cjs|js)$/.test(lower)) return "javascript";
-  if (/\.(css|module\.css)$/.test(lower)) return "css";
+  if (/\.module\.css$/.test(lower)) return "css";
+  if (/\.css$/.test(lower)) return "css";
+  if (/\.scss$/.test(lower)) return "scss";
+  if (/\.less$/.test(lower)) return "less";
   if (/\.(html?|htm)$/.test(lower)) return "html";
   if (/\.(json|jsonc)$/.test(lower)) return "json";
   if (/\.(md|mdx|markdown)$/.test(lower)) return "markdown";
@@ -23,7 +26,9 @@ export function monacoLanguageForPath(filePath: string): string {
 }
 
 export function supportsAiSuggestion(filePath: string): boolean {
-  return /\.(tsx?|jsx?|mjs|cjs|css|html?|jsonc?|mdx?)$/i.test(filePath);
+  return /\.(tsx?|jsx?|mjs|cjs|css|scss|less|html?|jsonc?|mdx?)$/i.test(
+    filePath,
+  );
 }
 
 const LANGUAGE_LABELS: Array<{ test: RegExp; label: string }> = [
@@ -32,6 +37,8 @@ const LANGUAGE_LABELS: Array<{ test: RegExp; label: string }> = [
   { test: /\.jsx$/i, label: "JavaScript React" },
   { test: /\.(mjs|cjs|js)$/i, label: "JavaScript" },
   { test: /\.module\.css$/i, label: "CSS Module" },
+  { test: /\.scss$/i, label: "SCSS" },
+  { test: /\.less$/i, label: "Less" },
   { test: /\.css$/i, label: "CSS" },
   { test: /\.html?$/i, label: "HTML" },
   { test: /\.jsonc?$/i, label: "JSON" },
