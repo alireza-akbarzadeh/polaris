@@ -29,6 +29,19 @@ export const listByProject = query({
   },
 });
 
+/** Max chars of file content sent to commit-message generation. */
+const STAGED_COMMIT_CONTENT_CAP = 4096;
+
+function truncateForCommitContext(value: string | undefined): string {
+  if (!value) {
+    return "";
+  }
+  if (value.length <= STAGED_COMMIT_CONTENT_CAP) {
+    return value;
+  }
+  return `${value.slice(0, STAGED_COMMIT_CONTENT_CAP)}\n…[truncated]`;
+}
+
 export const listChangedFiles = query({
   args: {
     projectId: v.id("projects"),
@@ -57,6 +70,41 @@ export const listChangedFiles = query({
           file._creationTime > project.syncedAt!,
       }))
       .sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+/** Truncated staged file contents for AI commit-message generation. */
+export const listStagedCommitContext = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const project = await verifyProjectAccess(ctx, args.projectId);
+    if (!project.syncedAt) {
+      return [];
+    }
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return files
+      .filter(
+        (file) =>
+          file.kind === "file" &&
+          file.staged === true &&
+          isProjectFileChanged(file, project.syncedAt),
+      )
+      .map((file) => ({
+        path: file.path,
+        isNew:
+          file.syncedContent === undefined &&
+          file._creationTime > project.syncedAt!,
+        content: truncateForCommitContext(file.content),
+        syncedContent: truncateForCommitContext(file.syncedContent),
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path));
   },
 });
 

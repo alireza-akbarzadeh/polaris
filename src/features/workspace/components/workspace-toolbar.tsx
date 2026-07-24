@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
@@ -19,16 +20,15 @@ import {
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
 import { useBilling } from "@/features/billing/hooks/use-billing";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { runCommand } from "@/features/workspace/commands/registry";
-import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
 import { ProjectPresenceAvatars } from "@/features/workspace/components/project-presence-avatars";
+import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
 import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-menu";
 import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
-import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 type WorkspaceToolbarProps = {
   projectId: string;
@@ -63,7 +63,7 @@ function ToolbarTooltipButton({
           className={cn(
             "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
             pressed &&
-            "bg-ws-hover text-ws-text after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-ws-accent",
+            "bg-ws-hover after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-ws-accent",
           )}
         >
           {children}

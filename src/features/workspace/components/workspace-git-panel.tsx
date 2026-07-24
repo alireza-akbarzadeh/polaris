@@ -7,6 +7,7 @@ import {
   GitBranchIcon,
   GitCommitIcon,
   Loader2Icon,
+  SparklesIcon,
   UploadIcon,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -16,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { GitHubConnectionStatus } from "@/features/github/components/github-connection-status";
 import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
+import { useGenerateCommitMessage } from "@/features/github/hooks/use-generate-commit-message";
 import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
@@ -44,6 +46,8 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
   const changedFiles = useChangedFiles(projectId);
   const { push, isPushing } = useCommitAndPush(projectId);
   const { pull, isPulling } = usePullFromGitHub(projectId);
+  const { generate, isGenerating, canGenerate } =
+    useGenerateCommitMessage(projectId);
 
   if (project === undefined) {
     return (
@@ -70,6 +74,14 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
       setCommitMessage("");
     } catch {
       // toast handled in hook
+    }
+  };
+
+  const onGenerateCommitMessage = async () => {
+    if (!canGenerate) return;
+    const message = await generate();
+    if (message) {
+      setCommitMessage(message);
     }
   };
 
@@ -126,17 +138,43 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                     )}
                   </Button>
                 </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium text-ws-text-muted">
+                    Commit message
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={!canGenerate || isPushing}
+                    onClick={() => void onGenerateCommitMessage()}
+                    className="h-6 gap-1 px-1.5 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text disabled:opacity-50"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2Icon className="size-3 animate-spin" />
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="size-3" />
+                        Generate
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Commit message"
                   rows={3}
-                  className="min-h-[72px] resize-none border-ws-border bg-ws-bg text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:ring-ws-accent"
+                  disabled={isGenerating}
+                  className="min-h-[72px] resize-none border-ws-border bg-ws-bg text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:ring-ws-accent disabled:opacity-60"
                 />
                 <Button
                   type="button"
                   size="sm"
-                  disabled={!canPush}
+                  disabled={!canPush || isGenerating}
                   onClick={() => void onCommitAndPush()}
                   className="h-7 w-full bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover disabled:opacity-50"
                 >

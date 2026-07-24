@@ -27,11 +27,12 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { NewProjectForm } from "@/features/projects/components/new-project-form";
-import { EditorSettingsPanel } from "@/features/settings/components/editor-settings-panel";
 import { ShortcutsPanel } from "@/features/settings/components/shortcuts-panel";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import type { EditorTab } from "@/features/workspace/store/workspace-store";
 import { FileEditorView } from "@/features/workspace/views/file-editor-view";
+import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
+import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
 import { cn } from "@/lib/utils";
 
 type WorkspaceEditorTabsProps = {
@@ -212,11 +213,7 @@ function SplitPaneContent({
         />
       );
     case "settings":
-      return (
-        <div className="h-full overflow-auto px-6 py-8">
-          <EditorSettingsPanel />
-        </div>
-      );
+      return <WorkspaceSettingsView projectId={projectId} />;
     case "shortcuts":
       return (
         <div className="h-full overflow-auto px-6 py-8">
@@ -231,11 +228,7 @@ function SplitPaneContent({
       );
     case "welcome":
     default:
-      return (
-        <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
-          Welcome
-        </div>
-      );
+      return <ProjectWorkspaceHome projectId={projectId} />;
   }
 }
 

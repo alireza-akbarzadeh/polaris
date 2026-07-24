@@ -1,3 +1,20 @@
+export const COMMIT_MESSAGE_PROMPT = `You are a git commit message generator for a web IDE.
+
+Write a conventional commit message for the staged changes below.
+
+Rules:
+- First line: type(scope): subject — subject ≤72 characters, imperative mood
+- Types: feat, fix, refactor, docs, style, test, chore, perf, build, ci
+- Optional body after a blank line; keep it short (1–3 lines) only if helpful
+- Output ONLY the commit message text — no markdown fences, no quotes, no commentary
+- Prefer a single clear subject; do not invent changes that are not in the context
+
+Project: {projectName}
+
+Staged changes:
+{stagedChanges}
+`;
+
 export const SUGGESTION_PROMPT = `You are a code suggestion assistant.
 
 <context>

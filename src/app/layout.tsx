@@ -3,7 +3,6 @@ import { IBM_Plex_Mono, Inter, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 
-// @ts-expect-error : issue with them css files
 import "./globals.css";
 
 const ibmPlexMono = IBM_Plex_Mono({

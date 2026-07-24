@@ -1,5 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import { useConvexAuth } from "convex/react";
 import { Manrope } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -11,7 +13,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useConvexAuth } from "convex/react";
 
 import {
   Dialog,

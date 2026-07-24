@@ -1,10 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useRef, type ReactNode } from "react";
 import {
   usePanelRef,
-  type Layout,
-  type PanelImperativeHandle,
+  type Layout
 } from "react-resizable-panels";
 
 import {
@@ -12,17 +11,18 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
+import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
+import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
-import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
 import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
-import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
-import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
+import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
 import { useEditorTabsSync, useNewProjectTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
@@ -212,64 +212,3 @@ export function WorkspaceLayout({
   );
 }
 
-type CollapsiblePanelSyncOptions = {
-  open: boolean;
-  panelRef: RefObject<PanelImperativeHandle | null>;
-  sizeKey: keyof PanelSizes;
-  isApplyingLayoutRef: RefObject<boolean>;
-};
-
-function useCollapsiblePanelSync({
-  open,
-  panelRef,
-  sizeKey,
-  isApplyingLayoutRef,
-}: CollapsiblePanelSyncOptions) {
-  useLayoutEffect(() => {
-    let cancelled = false;
-    let frameId = 0;
-
-    const finishApplying = () => {
-      frameId = requestAnimationFrame(() => {
-        if (!cancelled) isApplyingLayoutRef.current = false;
-      });
-    };
-
-    const apply = () => {
-      if (cancelled) return;
-
-      const panel = panelRef.current;
-      if (!panel) {
-        frameId = requestAnimationFrame(apply);
-        return;
-      }
-
-      isApplyingLayoutRef.current = true;
-      const { panelSizes, setPanelSizes } = useWorkspaceStore.getState();
-
-      try {
-        if (open) {
-          if (panel.isCollapsed()) {
-            panel.expand();
-          }
-          panel.resize(`${panelSizes[sizeKey]}`);
-        } else if (!panel.isCollapsed()) {
-          const { asPercentage } = panel.getSize();
-          if (asPercentage > 0) {
-            setPanelSizes({ [sizeKey]: asPercentage });
-          }
-          panel.collapse();
-        }
-      } finally {
-        finishApplying();
-      }
-    };
-
-    apply();
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frameId);
-    };
-  }, [open, panelRef, sizeKey, isApplyingLayoutRef]);
-}

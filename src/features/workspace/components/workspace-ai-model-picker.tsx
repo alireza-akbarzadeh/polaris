@@ -157,9 +157,13 @@ export function WorkspaceAiModelPicker({
             </CommandGroup>
             <CommandSeparator className="bg-ws-border" />
             <div className="px-3 py-2 text-[10px] leading-relaxed text-ws-text-muted">
-              Free-tier Gemini models for education and testing. Requires{" "}
-              <code className="text-ws-text-muted">GOOGLE_GENERATIVE_AI_API_KEY</code>
-              .
+              Free-tier Gemini models for chat, commit messages, and inline
+              suggestions. Set{" "}
+              <code className="text-ws-text-muted">
+                GOOGLE_GENERATIVE_AI_API_KEY
+              </code>{" "}
+              in <code className="text-ws-text-muted">.env.local</code> (Google
+              AI Studio).
             </div>
           </CommandList>
         </Command>

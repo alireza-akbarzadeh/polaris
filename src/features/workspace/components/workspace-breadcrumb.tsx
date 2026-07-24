@@ -40,12 +40,12 @@ export function WorkspaceBreadcrumb({
               </BreadcrumbSeparator>
               <BreadcrumbItem className="min-w-0">
                 {isLast ? (
-                  <BreadcrumbPage className="flex max-w-[180px] items-center gap-1.5 truncate font-medium text-ws-text">
+                  <BreadcrumbPage className="flex max-w-45 items-center gap-1.5 truncate font-medium text-ws-text">
                     <FileCodeIcon className="size-3 shrink-0 text-ws-accent-soft" />
                     <span className="truncate">{segment.label}</span>
                   </BreadcrumbPage>
                 ) : (
-                  <span className="max-w-[120px] truncate text-ws-text-muted transition-colors hover:text-ws-text">
+                  <span className="max-w-30 truncate text-ws-text-muted transition-colors hover:text-ws-text">
                     {segment.label}
                   </span>
                 )}
